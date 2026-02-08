@@ -1,5 +1,5 @@
-// src/db/schema.ts
 import {
+  index,
   pgEnum,
   pgTable,
   text,
@@ -20,30 +20,40 @@ export const assetStatus = pgEnum("asset_status", [
   "RETIRED",
 ]);
 
-export const assets = pgTable("assets", {
-  id: uuid("id").defaultRandom().primaryKey(),
+export const assets = pgTable(
+  "assets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
 
-  type: assetType("type").notNull(),
-  name: text("name").notNull(),
+    // ✅ ownership / authorization scope
+    createdByUserId: text("created_by_user_id").notNull(),
+    // optional if you use Clerk Organizations later:
+    // orgId: text("org_id"),
 
-  brand: text("brand"),
-  model: text("model"),
-  serialNumber: text("serial_number"),
+    type: assetType("type").notNull(),
+    name: text("name").notNull(),
+    brand: text("brand"),
+    model: text("model"),
+    serialNumber: text("serial_number"),
 
-  status: assetStatus("status").notNull().default("IN_STOCK"),
-  assignedToUserId: text("assigned_to_user_id"),
+    status: assetStatus("status").notNull().default("IN_STOCK"),
+    assignedToUserId: text("assigned_to_user_id"),
 
-  purchaseDate: date("purchase_date"),
-  warrantyEndDate: date("warranty_end_date"),
+    purchaseDate: date("purchase_date"),
+    warrantyEndDate: date("warranty_end_date"),
 
-  // AI-generated, but user-editable
-  description: text("description"),
-  notes: text("notes"),
+    description: text("description"),
+    notes: text("notes"),
 
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    createdByIdx: index("assets_created_by_idx").on(t.createdByUserId),
+    // orgIdx: index("assets_org_idx").on(t.orgId),
+  }),
+);

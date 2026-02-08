@@ -1,9 +1,8 @@
-// src/app/api/assets/route.ts
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db";
 import { assets } from "@/db/schema";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 export const runtime = "nodejs";
 
@@ -12,7 +11,12 @@ export async function GET() {
   if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const rows = await db.select().from(assets).orderBy(desc(assets.createdAt));
+  const rows = await db
+    .select()
+    .from(assets)
+    .where(eq(assets.createdByUserId, userId))
+    .orderBy(desc(assets.createdAt));
+
   return NextResponse.json(rows);
 }
 
@@ -26,6 +30,7 @@ export async function POST(req: Request) {
   const [created] = await db
     .insert(assets)
     .values({
+      createdByUserId: userId, // ✅ enforce ownership
       type: data.type,
       name: data.name,
       brand: data.brand ?? null,
