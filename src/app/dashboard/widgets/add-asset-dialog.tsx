@@ -13,7 +13,53 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
-type CreatedAsset = any;
+type CreatedAsset = {
+  id: string;
+  type: string;
+  name: string;
+  brand: string | null;
+  model: string | null;
+  serialNumber: string | null;
+  status: string;
+  description: string | null;
+  createdAt: string;
+};
+
+async function fetchJson<T>(
+  input: RequestInfo,
+  init?: RequestInit,
+): Promise<T> {
+  const res = await fetch(input, {
+    ...init,
+    headers: {
+      Accept: "application/json",
+      ...(init?.headers ?? {}),
+    },
+    cache: "no-store",
+  });
+
+  const text = await res.text();
+
+  if (!res.ok) {
+    throw new Error(
+      `${res.status} ${res.statusText} from ${typeof input === "string" ? input : "request"}: ${text.slice(0, 400)}`,
+    );
+  }
+
+  if (!text) {
+    throw new Error(
+      `Empty response body from ${typeof input === "string" ? input : "request"}`,
+    );
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(
+      `Non-JSON response from ${typeof input === "string" ? input : "request"}: ${text.slice(0, 400)}`,
+    );
+  }
+}
 
 export default function AddAssetDialog({
   onCreated,
@@ -34,15 +80,29 @@ export default function AddAssetDialog({
   const canSubmit = useMemo(() => name.trim().length > 0, [name]);
 
   async function generateDescription() {
+    if (!canSubmit) return;
+
     setBusy(true);
     try {
-      const res = await fetch("/api/ai/asset-description", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, name, brand, model, serialNumber, notes }),
-      });
-      const data = await res.json();
+      const data = await fetchJson<{ description?: string }>(
+        "/api/ai/asset-description",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type,
+            name,
+            brand,
+            model,
+            serialNumber,
+            notes,
+          }),
+        },
+      );
       setDescription(data.description ?? "");
+    } catch (e) {
+      console.error(e);
+      // keep existing description; don’t crash the UI
     } finally {
       setBusy(false);
     }
@@ -53,7 +113,7 @@ export default function AddAssetDialog({
 
     setBusy(true);
     try {
-      const res = await fetch("/api/assets", {
+      const created = await fetchJson<CreatedAsset>("/api/assets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -67,9 +127,6 @@ export default function AddAssetDialog({
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to create asset");
-      const created = await res.json();
-
       onCreated(created);
       setOpen(false);
 
@@ -81,6 +138,8 @@ export default function AddAssetDialog({
       setSerialNumber("");
       setNotes("");
       setDescription("");
+    } catch (e) {
+      console.error(e);
     } finally {
       setBusy(false);
     }

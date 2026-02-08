@@ -1,6 +1,7 @@
-// src/db/index.ts
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import "server-only";
 
-const sql = neon(process.env.DATABASE_URL!);
-export const db = drizzle(sql);
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
+
+const client = postgres(process.env.DATABASE_URL!, { max: 1 });
+export const db = drizzle(client);
