@@ -14,6 +14,7 @@ export const assetType = pgEnum("asset_type", [
   "LICENSE",
   "OTHER",
 ]);
+
 export const assetStatus = pgEnum("asset_status", [
   "IN_STOCK",
   "ASSIGNED",
@@ -25,13 +26,14 @@ export const assets = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
 
-    // ✅ ownership / authorization scope
+    // Authorization scope (required)
     createdByUserId: text("created_by_user_id").notNull(),
-    // optional if you use Clerk Organizations later:
+    // If you adopt Clerk Organizations later:
     // orgId: text("org_id"),
 
     type: assetType("type").notNull(),
     name: text("name").notNull(),
+
     brand: text("brand"),
     model: text("model"),
     serialNumber: text("serial_number"),
@@ -54,6 +56,5 @@ export const assets = pgTable(
   },
   (t) => ({
     createdByIdx: index("assets_created_by_idx").on(t.createdByUserId),
-    // orgIdx: index("assets_org_idx").on(t.orgId),
   }),
 );

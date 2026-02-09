@@ -7,43 +7,59 @@ import { desc, eq } from "drizzle-orm";
 export const runtime = "nodejs";
 
 export async function GET() {
-  const { userId } = await auth();
-  if (!userId)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const { userId } = await auth();
+    if (!userId)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const rows = await db
-    .select()
-    .from(assets)
-    .where(eq(assets.createdByUserId, userId))
-    .orderBy(desc(assets.createdAt));
+    const rows = await db
+      .select()
+      .from(assets)
+      .where(eq(assets.createdByUserId, userId))
+      .orderBy(desc(assets.createdAt));
 
-  return NextResponse.json(rows);
+    return NextResponse.json(rows);
+  } catch (err) {
+    console.error("GET /api/assets failed:", err);
+    return NextResponse.json(
+      { error: "Internal Server Error", details: String(err) },
+      { status: 500 },
+    );
+  }
 }
 
 export async function POST(req: Request) {
-  const { userId } = await auth();
-  if (!userId)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const { userId } = await auth();
+    if (!userId)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const data = await req.json();
+    const data = await req.json();
 
-  const [created] = await db
-    .insert(assets)
-    .values({
-      createdByUserId: userId, // ✅ enforce ownership
-      type: data.type,
-      name: data.name,
-      brand: data.brand ?? null,
-      model: data.model ?? null,
-      serialNumber: data.serialNumber ?? null,
-      status: data.status ?? "IN_STOCK",
-      assignedToUserId: data.assignedToUserId ?? null,
-      purchaseDate: data.purchaseDate ?? null,
-      warrantyEndDate: data.warrantyEndDate ?? null,
-      description: data.description ?? null,
-      notes: data.notes ?? null,
-    })
-    .returning();
+    const [created] = await db
+      .insert(assets)
+      .values({
+        createdByUserId: userId,
+        type: data.type,
+        name: data.name,
+        brand: data.brand ?? null,
+        model: data.model ?? null,
+        serialNumber: data.serialNumber ?? null,
+        status: data.status ?? "IN_STOCK",
+        assignedToUserId: data.assignedToUserId ?? null,
+        purchaseDate: data.purchaseDate ?? null,
+        warrantyEndDate: data.warrantyEndDate ?? null,
+        description: data.description ?? null,
+        notes: data.notes ?? null,
+      })
+      .returning();
 
-  return NextResponse.json(created, { status: 201 });
+    return NextResponse.json(created, { status: 201 });
+  } catch (err) {
+    console.error("POST /api/assets failed:", err);
+    return NextResponse.json(
+      { error: "Internal Server Error", details: String(err) },
+      { status: 500 },
+    );
+  }
 }
