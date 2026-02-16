@@ -15,6 +15,13 @@
       "when": 1770573369535,
       "tag": "0001_deep_fallen_one",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771261597619,
+      "tag": "0002_woozy_black_queen",
+      "breakpoints": true
     }
   ]
 }

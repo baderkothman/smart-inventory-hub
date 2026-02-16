@@ -37,6 +37,7 @@ export const assets = pgTable(
     brand: text("brand"),
     model: text("model"),
     serialNumber: text("serial_number"),
+    imageUrl: text("image_url"),
 
     status: assetStatus("status").notNull().default("IN_STOCK"),
     assignedToUserId: text("assigned_to_user_id"),

@@ -17,12 +17,12 @@ export default function RootLayout({
     <ClerkProvider
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
-      afterSignInUrl="/dashboard"
-      afterSignUpUrl="/dashboard"
-      afterSignOutUrl="/" // ✅ add this
+      afterSignInUrl="/home"
+      afterSignUpUrl="/home"
+      afterSignOutUrl="/"
     >
-      <html lang="en">
-        <body className="min-h-screen bg-zinc-50 text-zinc-950 dark:bg-black dark:text-zinc-50">
+      <html lang="en" suppressHydrationWarning>
+        <body className="min-h-screen bg-background text-foreground antialiased">
           {children}
         </body>
       </html>

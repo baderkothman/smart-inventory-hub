@@ -33,8 +33,11 @@ type AssetRow = {
 
 function GridLoadingOverlay() {
   return (
-    <div className="flex items-center justify-center h-full">
-      <span className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+    <div className="flex h-full items-center justify-center">
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-[var(--shadow-1)]">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-primary" />
+        <span className="text-sm text-muted-foreground">Loading assets…</span>
+      </div>
     </div>
   );
 }
@@ -76,14 +79,17 @@ function ActionsCell(
     <div className="flex items-center gap-2">
       <Button
         variant="secondary"
-        className="h-8 px-3"
+        size="sm"
+        className="h-8"
         onClick={() => props.onEdit(row)}
       >
         Edit
       </Button>
+
       <Button
-        variant="secondary"
-        className="h-8 px-3 text-red-600 hover:text-red-700"
+        variant="outline"
+        size="sm"
+        className="h-8 border-destructive/30 text-destructive hover:bg-destructive/10"
         onClick={() => props.onDelete(row)}
       >
         Delete
@@ -104,16 +110,15 @@ export default function DashboardClient() {
   const colDefs = useMemo<ColDef<AssetRow>[]>(() => {
     return [
       { field: "type", filter: true, sortable: true, width: 130 },
-      { field: "name", filter: true, sortable: true, flex: 1, minWidth: 200 },
+      { field: "name", filter: true, sortable: true, flex: 1, minWidth: 220 },
       { field: "brand", filter: true, sortable: true, width: 160 },
       { field: "model", filter: true, sortable: true, width: 160 },
       { field: "serialNumber", headerName: "Serial", filter: true, width: 200 },
       { field: "status", filter: true, width: 140 },
       { field: "createdAt", headerName: "Created", width: 190 },
-
       {
         headerName: "Actions",
-        width: 170,
+        width: 190,
         pinned: "right",
         sortable: false,
         filter: false,
@@ -151,75 +156,106 @@ export default function DashboardClient() {
   }, []);
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-xl font-semibold">Smart Inventory Hub</h1>
+    <div className="min-h-[calc(100vh-0px)] bg-background">
+      <div className="mx-auto w-full max-w-6xl px-6 py-6 space-y-4">
+        {/* Page header */}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold tracking-[-0.02em]">
+              Assets
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Add, search, edit, and manage your inventory in one place.
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2">
-          <Input
-            value={quickFilterText}
-            onChange={(e) => setQuickFilterText(e.target.value)}
-            placeholder="Search assets..."
-            className="w-[260px]"
-          />
+          {/* Command bar (M365 style) */}
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <div className="w-full sm:w-[280px]">
+              <Input
+                value={quickFilterText}
+                onChange={(e) => setQuickFilterText(e.target.value)}
+                placeholder="Search assets…"
+                className="h-9"
+              />
+            </div>
 
-          <Button variant="secondary" onClick={refresh} disabled={loading}>
-            Refresh
-          </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" onClick={refresh} disabled={loading}>
+                Refresh
+              </Button>
 
-          <AddAssetDialog
-            onCreated={(created) =>
-              setRows((prev) => [created as AssetRow, ...prev])
-            }
-          />
+              <AddAssetDialog
+                onCreated={(created) =>
+                  setRows((prev) => [created as AssetRow, ...prev])
+                }
+              />
 
-          {/* ✅ Sign out → back to home */}
-          <SignOutButton redirectUrl="/">
-            <Button variant="secondary">Sign out</Button>
-          </SignOutButton>
+              {/* Sign out */}
+              <SignOutButton redirectUrl="/">
+                <Button variant="outline">Sign out</Button>
+              </SignOutButton>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div className="ag-theme-quartz" style={{ height: 650, width: "100%" }}>
-        <AgGridReact<AssetRow>
-          theme="legacy"
-          rowData={rows}
-          columnDefs={colDefs}
-          quickFilterText={quickFilterText}
-          loading={loading}
-          loadingOverlayComponent={GridLoadingOverlay}
-          pagination
-          paginationPageSize={25}
-          getRowId={(p) => p.data.id}
+        {/* Grid surface */}
+        <div className="rounded-2xl border border-border bg-card shadow-[var(--shadow-1)]">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <div className="text-sm font-semibold">Inventory</div>
+            <div className="text-xs text-muted-foreground">
+              {loading ? "Loading…" : `${rows.length} item(s)`}
+            </div>
+          </div>
+
+          <div className="p-3">
+            <div
+              className="ag-theme-quartz"
+              style={{ height: 650, width: "100%" }}
+            >
+              <AgGridReact<AssetRow>
+                theme="legacy"
+                rowData={rows}
+                columnDefs={colDefs}
+                quickFilterText={quickFilterText}
+                loading={loading}
+                loadingOverlayComponent={GridLoadingOverlay}
+                pagination
+                paginationPageSize={25}
+                getRowId={(p) => p.data.id}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Modals */}
+        <EditAssetDialog
+          open={editOpen}
+          onOpenChange={(o) => {
+            setEditOpen(o);
+            if (!o) setActiveRow(null);
+          }}
+          asset={activeRow}
+          onUpdated={(updated) => {
+            setRows((prev) =>
+              prev.map((r) => (r.id === updated.id ? updated : r)),
+            );
+          }}
+        />
+
+        <DeleteAssetDialog
+          open={deleteOpen}
+          onOpenChange={(o) => {
+            setDeleteOpen(o);
+            if (!o) setActiveRow(null);
+          }}
+          assetId={activeRow?.id ?? null}
+          assetName={activeRow?.name ?? null}
+          onDeleted={(id) => {
+            setRows((prev) => prev.filter((r) => r.id !== id));
+          }}
         />
       </div>
-
-      <EditAssetDialog
-        open={editOpen}
-        onOpenChange={(o) => {
-          setEditOpen(o);
-          if (!o) setActiveRow(null);
-        }}
-        asset={activeRow}
-        onUpdated={(updated) => {
-          setRows((prev) =>
-            prev.map((r) => (r.id === updated.id ? updated : r)),
-          );
-        }}
-      />
-
-      <DeleteAssetDialog
-        open={deleteOpen}
-        onOpenChange={(o) => {
-          setDeleteOpen(o);
-          if (!o) setActiveRow(null);
-        }}
-        assetId={activeRow?.id ?? null}
-        assetName={activeRow?.name ?? null}
-        onDeleted={(id) => {
-          setRows((prev) => prev.filter((r) => r.id !== id));
-        }}
-      />
     </div>
   );
 }

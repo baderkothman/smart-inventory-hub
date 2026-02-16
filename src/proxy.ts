@@ -14,7 +14,9 @@ export default clerkMiddleware(async (auth, req) => {
     if (isApiRoute(req)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    return authObj.redirectToSignIn({ returnBackUrl: req.url });
+    return authObj.redirectToSignIn({
+      returnBackUrl: new URL("/home", req.url),
+    });
   }
 
   return NextResponse.next();
