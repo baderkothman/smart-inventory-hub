@@ -1,25 +1,22 @@
+/* src/app/globals.css */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* AG Grid (Quartz CSS theme). Keep AgGridReact theme="legacy" to avoid theme conflict. */
 @import "ag-grid-community/styles/ag-grid.css";
 @import "ag-grid-community/styles/ag-theme-quartz.css";
 
 @custom-variant dark (&:is(.dark *));
 
-/* Tailwind v4 tokens mapping (shadcn-compatible) */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  /* Font tokens (Segoe / Fluent feel; falls back to Geist if you keep it) */
-  --font-sans: var(--font-ui);
-  --font-mono: var(--font-mono-ui);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
 
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
 
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
@@ -34,260 +31,150 @@
   --color-accent-foreground: var(--accent-foreground);
 
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
 
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-
-  /* keep sidebar vars (future-ready) */
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-
-  /* Radii */
-  --radius-sm: calc(var(--radius) - 6px);
-  --radius-md: calc(var(--radius) - 3px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-xl: calc(var(--radius) + 6px);
+
+  /* Fonts */
+  --font-sans:
+    "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Helvetica Neue", Arial, "Apple Color Emoji",
+    "Segoe UI Emoji";
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
 }
 
-/* ===========================
-   Fluent / M365 Design Tokens
-   =========================== */
-
 :root {
-  /* Typography: prefer Segoe UI feel.
-     If you use next/font Geist, it will fill --font-geist-sans/mono and win automatically. */
-  --font-ui: var(--font-geist-sans,
-      "Segoe UI",
-      SegoeUI,
-      "Helvetica Neue",
-      Arial,
-      "Noto Sans",
-      "Apple Color Emoji",
-      "Segoe UI Emoji"
-    );
-  --font-mono-ui: var(--font-geist-mono,
-      ui-monospace,
-      SFMono-Regular,
-      Menlo,
-      Monaco,
-      Consolas,
-      "Liberation Mono",
-      "Courier New",
-      monospace);
+  /* Fluent-ish radius */
+  --radius: 12px;
 
-  /* Fluent radii */
-  --radius: 0.625rem;
-  /* 10px */
+  /* Fluent light */
+  --background: oklch(0.983 0.002 67.8);
+  /* #FAF9F8 */
+  --foreground: oklch(0.240 0.002 67.7);
+  /* #201F1E */
 
-  /* Surfaces (soft neutral like M365) */
-  --background: oklch(0.985 0.004 250);
-  /* app background */
   --card: oklch(1 0 0);
-  /* surface */
-  --popover: oklch(1 0 0);
-
-  /* Text */
-  --foreground: oklch(0.205 0.01 255);
+  /* #FFFFFF */
   --card-foreground: var(--foreground);
+
+  --popover: oklch(1 0 0);
   --popover-foreground: var(--foreground);
 
-  /* Fluent accent (Microsoft-ish blue) */
-  --primary: oklch(0.55 0.17 255);
-  --primary-foreground: oklch(0.99 0 0);
+  --primary: oklch(0.526 0.149 251.6);
+  /* #0F6CBD */
+  --primary-foreground: oklch(1 0 0);
 
-  /* Neutral system */
-  --secondary: oklch(0.965 0.006 250);
-  --secondary-foreground: oklch(0.235 0.01 255);
+  --secondary: oklch(0.962 0.002 67.8);
+  /* #F3F2F1 */
+  --secondary-foreground: var(--foreground);
 
-  --muted: oklch(0.965 0.006 250);
-  --muted-foreground: oklch(0.52 0.01 255);
+  --muted: oklch(0.962 0.002 67.8);
+  --muted-foreground: oklch(0.487 0.003 67.8);
+  /* #605E5C */
 
-  --accent: oklch(0.955 0.01 250);
+  --accent: oklch(0.937 0.003 67.7);
+  /* #EDEBE9 */
   --accent-foreground: var(--foreground);
 
-  /* Borders / inputs */
-  --border: oklch(0.89 0.01 250);
-  --input: oklch(0.89 0.01 250);
+  --destructive: oklch(0.570 0.193 24.7);
+  /* #D13438 */
+  --destructive-foreground: oklch(1 0 0);
 
-  /* Focus ring */
-  --ring: oklch(0.63 0.16 255);
+  --border: oklch(0.937 0.003 67.7);
+  --input: oklch(0.937 0.003 67.7);
+  --ring: var(--primary);
 
-  /* Destructive */
-  --destructive: oklch(0.58 0.22 25);
-  --destructive-foreground: oklch(0.99 0 0);
+  /* Subtle Fluent-ish shadows */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.06);
+  --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.12);
 
-  /* Sidebar (if/when you add one) */
-  --sidebar: oklch(0.99 0.003 250);
-  --sidebar-foreground: var(--foreground);
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: var(--accent);
-  --sidebar-accent-foreground: var(--accent-foreground);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--ring);
-
-  /* Elevation (subtle Fluent shadows) */
-  --shadow-1: 0 1px 2px oklch(0.2 0 0 / 0.06), 0 6px 18px oklch(0.2 0 0 / 0.06);
-  --shadow-2: 0 2px 4px oklch(0.2 0 0 / 0.08), 0 10px 26px oklch(0.2 0 0 / 0.08);
-
-  /* Motion */
-  --ease-fluent: cubic-bezier(0.2, 0, 0, 1);
+  color-scheme: light;
 }
 
 .dark {
-  color-scheme: dark;
+  /* Fluent dark */
+  --background: oklch(0.234 0.002 67.7);
+  /* #1B1A19 */
+  --foreground: oklch(0.985 0 0);
+  /* near white */
 
-  --background: oklch(0.14 0.01 255);
-  --card: oklch(0.18 0.01 255);
-  --popover: oklch(0.18 0.01 255);
-
-  --foreground: oklch(0.97 0 0);
+  --card: oklch(0.261 0.002 67.6);
+  /* #252423 */
   --card-foreground: var(--foreground);
+
+  --popover: oklch(0.261 0.002 67.6);
   --popover-foreground: var(--foreground);
 
-  --primary: oklch(0.72 0.14 255);
-  --primary-foreground: oklch(0.16 0.01 255);
+  --primary: oklch(0.680 0.152 246.2);
+  /* #479EF5 */
+  --primary-foreground: oklch(0.150 0 0);
 
-  --secondary: oklch(0.22 0.01 255);
+  --secondary: oklch(0.307 0.002 67.7);
+  /* #323130 */
   --secondary-foreground: var(--foreground);
 
-  --muted: oklch(0.22 0.01 255);
-  --muted-foreground: oklch(0.72 0.01 255);
+  --muted: oklch(0.307 0.002 67.7);
+  --muted-foreground: oklch(0.828 0.004 67.8);
+  /* #C8C6C4 */
 
-  --accent: oklch(0.24 0.01 255);
+  --accent: oklch(0.349 0.002 67.7);
+  /* #3B3A39 */
   --accent-foreground: var(--foreground);
 
-  --border: oklch(1 0 0 / 0.12);
-  --input: oklch(1 0 0 / 0.14);
+  --destructive: oklch(0.600 0.201 24.3);
+  /* slightly brighter red */
+  --destructive-foreground: oklch(1 0 0);
 
-  --ring: oklch(0.78 0.12 255);
+  --border: oklch(0.349 0.002 67.7);
+  --input: oklch(0.349 0.002 67.7);
+  --ring: var(--primary);
 
-  --destructive: oklch(0.68 0.18 25);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 14px 36px rgba(0, 0, 0, 0.55);
 
-  --sidebar: oklch(0.17 0.01 255);
-  --sidebar-foreground: var(--foreground);
-  --sidebar-border: var(--border);
-
-  --shadow-1: 0 1px 2px oklch(0 0 0 / 0.35), 0 10px 22px oklch(0 0 0 / 0.35);
-  --shadow-2: 0 2px 4px oklch(0 0 0 / 0.45), 0 16px 34px oklch(0 0 0 / 0.45);
+  color-scheme: dark;
 }
-
-/* ===========================
-   Base polish (Fluent feel)
-   =========================== */
 
 @layer base {
   * {
     @apply border-border;
   }
 
-  html {
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  html,
+  body {
+    height: 100%;
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: var(--font-ui);
-    letter-spacing: -0.01em;
-  }
-
-  /* Crisp focus outline across the app */
-  :focus-visible {
-    outline: 2px solid color-mix(in oklab, var(--ring) 75%, transparent);
-    outline-offset: 2px;
-    border-radius: calc(var(--radius) - 4px);
-  }
-
-  /* Fluent-ish selection */
-  ::selection {
-    background: color-mix(in oklab, var(--primary) 22%, transparent);
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
   }
 }
 
-/* ===========================
-   Fluent surfaces helpers
-   =========================== */
-@layer utilities {
-  .surface {
-    background: var(--card);
-    color: var(--card-foreground);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-1);
-  }
-
-  .surface-flat {
-    background: var(--card);
-    color: var(--card-foreground);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    box-shadow: none;
-  }
-}
-
-/* ===========================
-   AG Grid Fluent theming
-   (Quartz CSS + legacy theme)
-   =========================== */
-
+/* AG Grid — align quartz with our tokens */
 .ag-theme-quartz {
-  /* Typography */
-  --ag-font-family: var(--font-ui);
-  --ag-font-size: 13.5px;
-
-  /* Sizing */
-  --ag-grid-size: 6px;
-  --ag-cell-horizontal-padding: 12px;
-  --ag-row-height: 44px;
-  --ag-header-height: 44px;
-
-  /* Colors */
+  --ag-font-family: var(--font-sans);
   --ag-background-color: var(--card);
   --ag-foreground-color: var(--foreground);
   --ag-border-color: var(--border);
 
-  --ag-header-background-color: color-mix(in oklab, var(--secondary) 80%, var(--card) 20%);
+  --ag-header-background-color: var(--muted);
   --ag-header-foreground-color: var(--foreground);
+  --ag-header-height: 44;
 
-  --ag-odd-row-background-color: color-mix(in oklab, var(--card) 92%, var(--background) 8%);
-  --ag-row-hover-color: color-mix(in oklab, var(--primary) 10%, transparent);
-  --ag-selected-row-background-color: color-mix(in oklab, var(--primary) 14%, transparent);
-
-  --ag-input-focus-border-color: var(--primary);
+  --ag-row-hover-color: color-mix(in oklch, var(--primary) 10%, var(--card));
+  --ag-selected-row-background-color: color-mix(in oklch, var(--primary) 14%, var(--card));
   --ag-range-selection-border-color: var(--primary);
 
-  /* Separators */
-  --ag-row-border-color: color-mix(in oklab, var(--border) 80%, transparent);
-  --ag-secondary-border-color: var(--border);
-}
-
-/* Make the grid feel like an M365 “card” */
-.ag-theme-quartz .ag-root-wrapper {
-  border-radius: var(--radius);
-  overflow: hidden;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-1);
-}
-
-/* Header text weight like Fluent tables */
-.ag-theme-quartz .ag-header-cell-text {
-  font-weight: 600;
-}
-
-/* Slightly softer cell text */
-.ag-theme-quartz .ag-cell {
-  color: color-mix(in oklab, var(--foreground) 92%, transparent);
+  --ag-control-panel-background-color: var(--card);
+  --ag-odd-row-background-color: color-mix(in oklch, var(--muted) 40%, var(--card));
 }

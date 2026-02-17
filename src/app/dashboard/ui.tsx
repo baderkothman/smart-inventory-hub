@@ -2,34 +2,57 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
-import {
-  AllCommunityModule,
+import type {
   ColDef,
   ICellRendererParams,
-  ModuleRegistry,
+  ValueFormatterParams,
+  GridReadyEvent,
+  RowClickedEvent,
 } from "ag-grid-community";
+import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
 import AddAssetDialog from "./widgets/add-asset-dialog";
 import EditAssetDialog from "./widgets/edit-asset-dialog";
 import DeleteAssetDialog from "./widgets/delete-asset-dialog";
+
 import { SignOutButton } from "@clerk/nextjs";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
+type AssetType = "LAPTOP" | "MONITOR" | "LICENSE" | "OTHER";
+type AssetStatus = "IN_STOCK" | "ASSIGNED" | "RETIRED";
+
 type AssetRow = {
   id: string;
-  type: "LAPTOP" | "MONITOR" | "LICENSE" | "OTHER";
+  type: AssetType;
   name: string;
   brand: string | null;
   model: string | null;
   serialNumber: string | null;
-  status: "IN_STOCK" | "ASSIGNED" | "RETIRED";
+  imageUrl: string | null;
+  status: AssetStatus;
   description: string | null;
   notes: string | null;
   createdAt: string;
   updatedAt?: string;
 };
+
+function formatDate(v: unknown) {
+  if (!v) return "";
+  const d = v instanceof Date ? v : new Date(String(v));
+  if (Number.isNaN(d.getTime())) return String(v);
+
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+}
 
 function GridLoadingOverlay() {
   return (
@@ -59,11 +82,56 @@ async function fetchJson<T>(
 
   if (!res.ok) {
     throw new Error(
-      `${res.status} ${res.statusText} from ${typeof input === "string" ? input : "request"}: ${text.slice(0, 400)}`,
+      `${res.status} ${res.statusText} from ${
+        typeof input === "string" ? input : "request"
+      }: ${text.slice(0, 400)}`,
     );
   }
   if (!text) throw new Error("Empty response body");
+
   return JSON.parse(text) as T;
+}
+
+function getInitials(name: string) {
+  const initials = name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join("");
+  return initials || "A";
+}
+
+function ImageCell(p: ICellRendererParams<AssetRow, string | null>) {
+  const url = (p.value ?? "").trim();
+  const name = p.data?.name ?? "Asset";
+  const initials = getInitials(name);
+
+  // If image fails to load, we show fallback initials (M365-like)
+  const [failed, setFailed] = useState(false);
+
+  if (!url || failed) {
+    return (
+      <div className="flex items-center justify-center">
+        <div className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-secondary text-secondary-foreground text-xs font-semibold">
+          {initials}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-center">
+      <img
+        src={url}
+        alt={name}
+        className="h-9 w-9 rounded-lg border border-border object-cover"
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+      />
+    </div>
+  );
 }
 
 function ActionsCell(
@@ -107,15 +175,43 @@ export default function DashboardClient() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [activeRow, setActiveRow] = useState<AssetRow | null>(null);
 
+  const defaultColDef = useMemo<ColDef<AssetRow>>(
+    () => ({
+      sortable: true,
+      filter: true,
+      resizable: true,
+      suppressMovable: true,
+    }),
+    [],
+  );
+
   const colDefs = useMemo<ColDef<AssetRow>[]>(() => {
+    const createdFmt = (p: ValueFormatterParams<AssetRow, unknown>) =>
+      formatDate(p.value);
+
     return [
-      { field: "type", filter: true, sortable: true, width: 130 },
-      { field: "name", filter: true, sortable: true, flex: 1, minWidth: 220 },
-      { field: "brand", filter: true, sortable: true, width: 160 },
-      { field: "model", filter: true, sortable: true, width: 160 },
-      { field: "serialNumber", headerName: "Serial", filter: true, width: 200 },
-      { field: "status", filter: true, width: 140 },
-      { field: "createdAt", headerName: "Created", width: 190 },
+      {
+        headerName: "",
+        field: "imageUrl",
+        width: 72,
+        pinned: "left",
+        sortable: false,
+        filter: false,
+        resizable: false,
+        cellRenderer: ImageCell,
+      },
+      { field: "type", width: 130 },
+      { field: "name", flex: 1, minWidth: 240 },
+      { field: "brand", width: 160 },
+      { field: "model", width: 160 },
+      { field: "serialNumber", headerName: "Serial", width: 200 },
+      { field: "status", width: 140 },
+      {
+        field: "createdAt",
+        headerName: "Created",
+        width: 210,
+        valueFormatter: createdFmt,
+      },
       {
         headerName: "Actions",
         width: 190,
@@ -155,11 +251,22 @@ export default function DashboardClient() {
     void refresh();
   }, []);
 
+  function onRowClicked(e: RowClickedEvent<AssetRow>) {
+    // M365-ish interaction: click a row to edit quickly (ignore clicks on actions area)
+    if (!e.data) return;
+    setActiveRow(e.data);
+    setEditOpen(true);
+  }
+
+  function onGridReady(_e: GridReadyEvent<AssetRow>) {
+    // placeholder: if later you want autosize columns, etc.
+  }
+
   return (
     <div className="min-h-[calc(100vh-0px)] bg-background">
-      <div className="mx-auto w-full max-w-6xl px-6 py-6 space-y-4">
+      <div className="mx-auto w-full max-w-6xl space-y-4 px-6 py-6">
         {/* Page header */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold tracking-[-0.02em]">
               Assets
@@ -169,7 +276,7 @@ export default function DashboardClient() {
             </p>
           </div>
 
-          {/* Command bar (M365 style) */}
+          {/* Command bar */}
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <div className="w-full sm:w-[280px]">
               <Input
@@ -186,12 +293,12 @@ export default function DashboardClient() {
               </Button>
 
               <AddAssetDialog
-                onCreated={(created) =>
-                  setRows((prev) => [created as AssetRow, ...prev])
-                }
+                onCreated={(created) => {
+                  // created is already compatible with AssetRow shape
+                  setRows((prev) => [created, ...prev]);
+                }}
               />
 
-              {/* Sign out */}
               <SignOutButton redirectUrl="/">
                 <Button variant="outline">Sign out</Button>
               </SignOutButton>
@@ -201,7 +308,7 @@ export default function DashboardClient() {
 
         {/* Grid surface */}
         <div className="rounded-2xl border border-border bg-card shadow-[var(--shadow-1)]">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div className="text-sm font-semibold">Inventory</div>
             <div className="text-xs text-muted-foreground">
               {loading ? "Loading…" : `${rows.length} item(s)`}
@@ -217,12 +324,18 @@ export default function DashboardClient() {
                 theme="legacy"
                 rowData={rows}
                 columnDefs={colDefs}
+                defaultColDef={defaultColDef}
                 quickFilterText={quickFilterText}
                 loading={loading}
                 loadingOverlayComponent={GridLoadingOverlay}
                 pagination
                 paginationPageSize={25}
                 getRowId={(p) => p.data.id}
+                rowHeight={52}
+                suppressCellFocus
+                enableCellTextSelection
+                onRowClicked={onRowClicked}
+                onGridReady={onGridReady}
               />
             </div>
           </div>

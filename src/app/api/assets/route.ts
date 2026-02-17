@@ -6,11 +6,25 @@ import { desc, eq } from "drizzle-orm";
 
 export const runtime = "nodejs";
 
+function toIso(v: unknown) {
+  if (v instanceof Date) return v.toISOString();
+  return v;
+}
+
+function normalizeAssetRow(row: any) {
+  return {
+    ...row,
+    createdAt: toIso(row.createdAt),
+    updatedAt: toIso(row.updatedAt),
+  };
+}
+
 export async function GET() {
   try {
     const { userId } = await auth();
-    if (!userId)
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const rows = await db
       .select()
@@ -18,11 +32,11 @@ export async function GET() {
       .where(eq(assets.createdByUserId, userId))
       .orderBy(desc(assets.createdAt));
 
-    return NextResponse.json(rows);
+    return NextResponse.json(rows.map(normalizeAssetRow));
   } catch (err) {
     console.error("GET /api/assets failed:", err);
     return NextResponse.json(
-      { error: "Internal Server Error", details: String(err) },
+      { error: "Internal Server Error" },
       { status: 500 },
     );
   }
@@ -31,20 +45,32 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();
-    if (!userId)
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const data = await req.json();
+
+    const name = String(data?.name ?? "").trim();
+    const type = String(data?.type ?? "").trim();
+
+    if (!name || !type) {
+      return NextResponse.json(
+        { error: "Missing required fields: type, name" },
+        { status: 400 },
+      );
+    }
 
     const [created] = await db
       .insert(assets)
       .values({
         createdByUserId: userId,
         type: data.type,
-        name: data.name,
+        name,
         brand: data.brand ?? null,
         model: data.model ?? null,
         serialNumber: data.serialNumber ?? null,
+        imageUrl: data.imageUrl ?? null,
         status: data.status ?? "IN_STOCK",
         assignedToUserId: data.assignedToUserId ?? null,
         purchaseDate: data.purchaseDate ?? null,
@@ -54,11 +80,11 @@ export async function POST(req: Request) {
       })
       .returning();
 
-    return NextResponse.json(created, { status: 201 });
+    return NextResponse.json(normalizeAssetRow(created), { status: 201 });
   } catch (err) {
     console.error("POST /api/assets failed:", err);
     return NextResponse.json(
-      { error: "Internal Server Error", details: String(err) },
+      { error: "Internal Server Error" },
       { status: 500 },
     );
   }

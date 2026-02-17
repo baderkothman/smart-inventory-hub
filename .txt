@@ -1,0 +1,5 @@
+feat(auth,ux): improve guest landing + post-auth routing
+* Redirect signed-in users from `/` to `/home`
+* Add Microsoft-style landing CTA + “Go to dashboard” guest flow (`redirect_url=/dashboard`)
+* Update Clerk sign-in/up pages to support redirect_url (remove forceRedirectUrl)
+* Ensure `/dashboard` redirects guests to sign-in and returns back to dashboard

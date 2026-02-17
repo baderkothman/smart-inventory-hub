@@ -1,11 +1,11 @@
 import {
+  date,
   index,
   pgEnum,
   pgTable,
   text,
   timestamp,
   uuid,
-  date,
 } from "drizzle-orm/pg-core";
 
 export const assetType = pgEnum("asset_type", [
@@ -37,6 +37,8 @@ export const assets = pgTable(
     brand: text("brand"),
     model: text("model"),
     serialNumber: text("serial_number"),
+
+    // ✅ Optional image (public URL for now)
     imageUrl: text("image_url"),
 
     status: assetStatus("status").notNull().default("IN_STOCK"),

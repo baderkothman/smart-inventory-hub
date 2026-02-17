@@ -2,90 +2,130 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db";
 import { assets } from "@/db/schema";
-import { and, eq, sql } from "drizzle-orm";
-import { z } from "zod";
+import { and, eq } from "drizzle-orm";
 
 export const runtime = "nodejs";
 
-const IdSchema = z.string().uuid();
+function toIso(v: unknown) {
+  if (v instanceof Date) return v.toISOString();
+  return v;
+}
 
-const PatchSchema = z.object({
-  type: z.enum(["LAPTOP", "MONITOR", "LICENSE", "OTHER"]).optional(),
-  name: z.string().min(1).max(120).optional(),
-  brand: z.string().max(120).nullable().optional(),
-  model: z.string().max(120).nullable().optional(),
-  serialNumber: z.string().max(200).nullable().optional(),
-  status: z.enum(["IN_STOCK", "ASSIGNED", "RETIRED"]).optional(),
-  assignedToUserId: z.string().max(200).nullable().optional(),
-  purchaseDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullable()
-    .optional(),
-  warrantyEndDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullable()
-    .optional(),
-  description: z.string().max(4000).nullable().optional(),
-  notes: z.string().max(2000).nullable().optional(),
-});
+function normalizeAssetRow(row: any) {
+  return {
+    ...row,
+    createdAt: toIso(row.createdAt),
+    updatedAt: toIso(row.updatedAt),
+  };
+}
 
-function jsonError(message: string, status = 400, details?: unknown) {
-  return NextResponse.json({ error: message, details }, { status });
+export async function GET(
+  _req: Request,
+  { params }: { params: { id: string } },
+) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const id = params.id;
+
+    const [row] = await db
+      .select()
+      .from(assets)
+      .where(and(eq(assets.id, id), eq(assets.createdByUserId, userId)));
+
+    if (!row) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(normalizeAssetRow(row));
+  } catch (err) {
+    console.error("GET /api/assets/[id] failed:", err);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
 }
 
 export async function PATCH(
   req: Request,
   { params }: { params: { id: string } },
 ) {
-  const { userId } = await auth();
-  if (!userId) return jsonError("Unauthorized", 401);
-
-  const idParsed = IdSchema.safeParse(params.id);
-  if (!idParsed.success) return jsonError("Invalid id", 400);
-
-  let raw: unknown;
   try {
-    raw = await req.json();
-  } catch {
-    return jsonError("Invalid JSON body", 400);
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const id = params.id;
+    const data = await req.json();
+
+    const name = data?.name != null ? String(data.name).trim() : null;
+
+    const [updated] = await db
+      .update(assets)
+      .set({
+        type: data.type,
+        name: name ?? undefined,
+        brand: data.brand ?? null,
+        model: data.model ?? null,
+        serialNumber: data.serialNumber ?? null,
+        status: data.status ?? "IN_STOCK",
+        assignedToUserId: data.assignedToUserId ?? null,
+        purchaseDate: data.purchaseDate ?? null,
+        warrantyEndDate: data.warrantyEndDate ?? null,
+        description: data.description ?? null,
+        notes: data.notes ?? null,
+        imageUrl: data.imageUrl ?? null,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(assets.id, id), eq(assets.createdByUserId, userId)))
+      .returning();
+
+    if (!updated) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(normalizeAssetRow(updated));
+  } catch (err) {
+    console.error("PATCH /api/assets/[id] failed:", err);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
   }
-
-  const parsed = PatchSchema.safeParse(raw);
-  if (!parsed.success)
-    return jsonError("Validation error", 422, parsed.error.flatten());
-
-  const patch = parsed.data;
-
-  const [updated] = await db
-    .update(assets)
-    .set({
-      ...patch,
-      updatedAt: sql`now()`,
-    })
-    .where(and(eq(assets.id, params.id), eq(assets.createdByUserId, userId)))
-    .returning();
-
-  if (!updated) return jsonError("Not found", 404);
-  return NextResponse.json(updated);
 }
 
 export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } },
 ) {
-  const { userId } = await auth();
-  if (!userId) return jsonError("Unauthorized", 401);
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const idParsed = IdSchema.safeParse(params.id);
-  if (!idParsed.success) return jsonError("Invalid id", 400);
+    const id = params.id;
 
-  const [deleted] = await db
-    .delete(assets)
-    .where(and(eq(assets.id, params.id), eq(assets.createdByUserId, userId)))
-    .returning();
+    const [deleted] = await db
+      .delete(assets)
+      .where(and(eq(assets.id, id), eq(assets.createdByUserId, userId)))
+      .returning({ id: assets.id });
 
-  if (!deleted) return jsonError("Not found", 404);
-  return NextResponse.json({ ok: true });
+    if (!deleted) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ id: deleted.id });
+  } catch (err) {
+    console.error("DELETE /api/assets/[id] failed:", err);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
 }

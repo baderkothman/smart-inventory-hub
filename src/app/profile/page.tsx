@@ -1,8 +1,10 @@
+// src/app/profile/page.tsx
 import Image from "next/image";
+import Link from "next/link";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { SignOutButton } from "@clerk/nextjs";
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
@@ -13,6 +15,17 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       </div>
     </div>
   );
+}
+
+function initialsFromName(name: string) {
+  const parts = name
+    .split(" ")
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  const a = parts[0]?.[0] ?? "U";
+  const b = parts[1]?.[0] ?? "";
+  return (a + b).toUpperCase();
 }
 
 export default async function ProfilePage() {
@@ -35,6 +48,7 @@ export default async function ProfilePage() {
     : "—";
 
   const avatar = user.imageUrl;
+  const initials = initialsFromName(fullName);
 
   return (
     <div className="min-h-screen bg-background">
@@ -54,9 +68,14 @@ export default async function ProfilePage() {
             <Button asChild variant="secondary">
               <Link href="/dashboard">Dashboard</Link>
             </Button>
+
             <Button asChild variant="outline">
               <Link href="/settings">Settings</Link>
             </Button>
+
+            <SignOutButton redirectUrl="/">
+              <Button variant="outline">Sign out</Button>
+            </SignOutButton>
           </div>
         </div>
 
@@ -69,9 +88,14 @@ export default async function ProfilePage() {
                   src={avatar}
                   alt="Profile photo"
                   fill
+                  sizes="56px"
                   className="object-cover"
                 />
-              ) : null}
+              ) : (
+                <div className="grid h-full w-full place-items-center text-xs font-semibold text-muted-foreground">
+                  {initials}
+                </div>
+              )}
             </div>
 
             <div className="min-w-0">
@@ -121,7 +145,7 @@ export default async function ProfilePage() {
               Next improvement
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Add a profile preferences section (theme, default page, etc.).
+              Add profile preferences (theme, default page, etc.).
             </p>
           </div>
         </div>

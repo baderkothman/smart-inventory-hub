@@ -4,6 +4,7 @@ import DashboardClient from "./ui";
 
 export default async function Page() {
   const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+  if (!userId) redirect("/sign-in?redirect_url=/dashboard");
+
   return <DashboardClient />;
 }

@@ -1,30 +1,22 @@
 // src/proxy.ts
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
 
-const isPublicRoute = createRouteMatcher(["/", "/sign-in(.*)", "/sign-up(.*)"]);
-const isApiRoute = createRouteMatcher(["/api(.*)", "/trpc(.*)"]);
+const isPublicRoute = createRouteMatcher([
+  "/", // landing
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+]);
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isPublicRoute(req)) return NextResponse.next();
-
-  const authObj = await auth(); // ✅ await the promise
-
-  if (!authObj.userId) {
-    if (isApiRoute(req)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    return authObj.redirectToSignIn({
-      returnBackUrl: new URL("/home", req.url),
-    });
+  if (!isPublicRoute(req)) {
+    await auth.protect();
   }
-
-  return NextResponse.next();
 });
 
 export const config = {
   matcher: [
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    // Next.js recommended matcher for middleware/proxy
+    "/((?!_next|.*\\.(?:css|js|json|png|jpg|jpeg|gif|svg|webp|ico|txt|map)$).*)",
     "/(api|trpc)(.*)",
   ],
 };

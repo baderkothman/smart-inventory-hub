@@ -42,16 +42,6 @@ export default function Page() {
                 },
               }}
             />
-
-            <p className="mt-4 text-xs text-muted-foreground">
-              Don’t have an account?{" "}
-              <Link
-                href="/sign-up"
-                className="text-primary hover:underline underline-offset-4"
-              >
-                Sign up
-              </Link>
-            </p>
           </div>
         </div>
       </div>
