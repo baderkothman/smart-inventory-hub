@@ -1,10 +1,14 @@
+// src/app/dashboard/page.tsx
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import DashboardClient from "./ui";
 
 export default async function Page() {
   const { userId } = await auth();
-  if (!userId) redirect("/sign-in?redirect_url=/dashboard");
+
+  // Guests must not access authenticated screens.
+  // Keep the app flow consistent: after sign-in, land on /home.
+  if (!userId) redirect("/sign-in?redirect_url=/home");
 
   return <DashboardClient />;
 }

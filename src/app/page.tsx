@@ -1,4 +1,5 @@
 // src/app/page.tsx
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
@@ -7,9 +8,8 @@ import {
   LayoutGrid,
   Sparkles,
   ShieldCheck,
-  Search,
-  ArrowRight,
   Lock,
+  ArrowRight,
 } from "lucide-react";
 
 function LogoMark() {
@@ -20,26 +20,23 @@ function LogoMark() {
   );
 }
 
-function FeatureCard({
+function FeatureRow({
   icon,
   title,
   description,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   title: string;
   description: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-1)]">
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 grid h-9 w-9 place-items-center rounded-xl border border-border bg-background text-muted-foreground">
-          {icon}
-        </div>
-
-        <div className="min-w-0">
-          <p className="text-sm font-semibold tracking-[-0.01em]">{title}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        </div>
+    <div className="flex items-start gap-3">
+      <div className="mt-0.5 grid h-9 w-9 place-items-center rounded-xl border border-border bg-background text-muted-foreground">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold tracking-[-0.01em]">{title}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       </div>
     </div>
   );
@@ -60,8 +57,8 @@ function Step({
         {n}
       </span>
       <div>
-        <p className="font-medium text-foreground">{title}</p>
-        <p className="text-muted-foreground">{description}</p>
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
     </li>
   );
@@ -89,18 +86,23 @@ export default async function LandingPage() {
         </div>
 
         <nav className="flex items-center gap-2">
+          {/* Secondary (quiet) */}
           <Button asChild variant="ghost">
             <Link href="/sign-in">Sign in</Link>
           </Button>
+
+          {/* Primary CTA */}
           <Button asChild>
-            <Link href="/sign-up">Sign up</Link>
+            <Link href="/sign-up">
+              Get started <ArrowRight className="h-4 w-4" />
+            </Link>
           </Button>
         </nav>
       </header>
 
       {/* Body */}
       <main className="mx-auto w-full max-w-6xl px-6 pb-16">
-        <section className="grid gap-10 py-10 lg:grid-cols-2 lg:items-center">
+        <section className="grid gap-10 py-10 lg:grid-cols-2 lg:items-start">
           {/* Left: hero */}
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground shadow-sm">
@@ -109,7 +111,7 @@ export default async function LandingPage() {
             </div>
 
             <h1 className="text-4xl font-semibold leading-tight tracking-[-0.03em] sm:text-5xl">
-              Manage assets like a modern Microsoft list — fast, clean, secure.
+              Manage assets with a clean, Microsoft-style workflow.
             </h1>
 
             <p className="max-w-xl text-base leading-7 text-muted-foreground">
@@ -118,41 +120,23 @@ export default async function LandingPage() {
               searchable grid.
             </p>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Button asChild size="lg">
-                <Link href="/sign-up">
-                  Create account <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
+            {/* No extra CTA block here — the header already has the actions */}
 
-              <Button asChild size="lg" variant="outline">
-                <Link href="/sign-in">Sign in</Link>
-              </Button>
-
-              {/* ✅ Guest “Go to dashboard” flow:
-                  takes them to Sign-in and returns them to /dashboard after auth */}
-              <Button asChild size="lg" variant="secondary">
-                <Link href="/sign-in?redirect_url=/dashboard" prefetch={false}>
-                  Go to dashboard
-                </Link>
-              </Button>
-            </div>
-
-            <div className="grid gap-3 pt-2 sm:grid-cols-3">
-              <FeatureCard
+            <div className="grid gap-4 pt-2">
+              <FeatureRow
                 icon={<LayoutGrid className="h-4 w-4" />}
                 title="Fast grid"
-                description="Search, filter, sort instantly — built for scale."
+                description="Search, filter, and sort instantly — built for daily ops."
               />
-              <FeatureCard
+              <FeatureRow
                 icon={<Sparkles className="h-4 w-4" />}
                 title="AI descriptions"
                 description="Generate editable technical text in one click."
               />
-              <FeatureCard
+              <FeatureRow
                 icon={<ShieldCheck className="h-4 w-4" />}
-                title="Secure"
-                description="Clerk sessions + per-user access scope."
+                title="Secure by default"
+                description="Clerk sessions + per-user scoped data access."
               />
             </div>
           </div>
@@ -163,7 +147,7 @@ export default async function LandingPage() {
               How it works
             </p>
 
-            <ol className="mt-4 space-y-3 text-sm text-muted-foreground">
+            <ol className="mt-4 space-y-3">
               <Step
                 n={1}
                 title="Add an asset"
@@ -177,7 +161,7 @@ export default async function LandingPage() {
               <Step
                 n={3}
                 title="Manage in dashboard"
-                description="Edit, delete, and organize in a clean grid."
+                description="Edit and organize everything in a clean grid."
               />
             </ol>
 
@@ -187,7 +171,7 @@ export default async function LandingPage() {
                   <Lock className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold">Guest access</p>
+                  <p className="text-sm font-semibold">Access</p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Guests can view this landing page only. Sign in to access
                     the dashboard, profile, and settings.
@@ -195,64 +179,20 @@ export default async function LandingPage() {
                 </div>
               </div>
 
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                <Button asChild className="w-full sm:w-auto">
-                  <Link href="/sign-up">Get started</Link>
-                </Button>
-                <Button asChild variant="outline" className="w-full sm:w-auto">
-                  <Link href="/sign-in">I already have an account</Link>
-                </Button>
-              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Already have an account?{" "}
+                <Link href="/sign-in" className="underline underline-offset-4">
+                  Sign in
+                </Link>
+                .
+              </p>
             </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-border bg-card p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <Search className="h-4 w-4 text-muted-foreground" />
-                  Built for retrieval
-                </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Find assets quickly with a “Microsoft-like” grid experience.
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-border bg-card p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                  Scoped per user
-                </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Your inventory is private to your Clerk session.
-                </p>
-              </div>
-            </div>
-
-            <p className="mt-4 text-xs text-muted-foreground">
-              Tip: If you click “Go to dashboard” as a guest, you’ll be asked to
-              sign in first, then returned to the dashboard.
-            </p>
           </div>
         </section>
 
         {/* Footer */}
         <footer className="mt-8 border-t border-border pt-6 text-xs text-muted-foreground">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p>© {new Date().getFullYear()} Smart Inventory Hub</p>
-            <div className="flex items-center gap-4">
-              <Link
-                className="hover:underline underline-offset-4"
-                href="/sign-in"
-              >
-                Sign in
-              </Link>
-              <Link
-                className="hover:underline underline-offset-4"
-                href="/sign-up"
-              >
-                Sign up
-              </Link>
-            </div>
-          </div>
+          <p>© {new Date().getFullYear()} Smart Inventory Hub</p>
         </footer>
       </main>
     </div>

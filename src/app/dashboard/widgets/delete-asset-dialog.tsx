@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -51,7 +52,6 @@ export default function DeleteAssetDialog({
   const [confirmText, setConfirmText] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // Reset state when modal closes/opens
   useEffect(() => {
     if (!open) {
       setBusy(false);
@@ -94,22 +94,22 @@ export default function DeleteAssetDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Delete asset</DialogTitle>
+          <DialogDescription>
+            This action can’t be undone. To confirm, type{" "}
+            <span className="font-medium text-foreground">DELETE</span>.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3">
+        <div className="grid gap-4">
+          <div className="rounded-lg border border-destructive/25 bg-destructive/5 px-4 py-3">
             <p className="text-sm text-foreground">
-              This action is <span className="font-semibold">permanent</span>.
-              It will delete{" "}
-              <span className="font-semibold">{assetName ?? "this asset"}</span>{" "}
-              from your inventory.
+              You’re about to permanently delete{" "}
+              <span className="font-semibold">{assetName ?? "this asset"}</span>
+              .
             </p>
           </div>
 
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              Type <span className="font-semibold">DELETE</span> to confirm.
-            </p>
+          <div className="grid gap-2">
             <Input
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
@@ -121,13 +121,13 @@ export default function DeleteAssetDialog({
           </div>
 
           {error ? (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3">
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3">
               <p className="text-sm text-destructive">{error}</p>
             </div>
           ) : null}
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-2">
+        <DialogFooter className="gap-2">
           <Button
             variant="secondary"
             onClick={() => onOpenChange(false)}
@@ -137,12 +137,11 @@ export default function DeleteAssetDialog({
           </Button>
 
           <Button
-            variant="outline"
-            className="border-destructive/30 text-destructive hover:bg-destructive/10"
+            variant="destructive"
             onClick={doDelete}
             disabled={!canDelete}
           >
-            {busy ? "Deleting..." : "Delete"}
+            {busy ? "Deleting…" : "Delete"}
           </Button>
         </DialogFooter>
       </DialogContent>

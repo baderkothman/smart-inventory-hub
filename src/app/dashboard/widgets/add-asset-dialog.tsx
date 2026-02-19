@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Sparkles } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -41,6 +44,14 @@ type CreatedAsset = {
 
 const TYPE_OPTIONS: AssetType[] = ["LAPTOP", "MONITOR", "LICENSE", "OTHER"];
 const STATUS_OPTIONS: AssetStatus[] = ["IN_STOCK", "ASSIGNED", "RETIRED"];
+
+function labelize(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((w) => w.slice(0, 1).toUpperCase() + w.slice(1))
+    .join(" ");
+}
 
 async function fetchJson<T>(
   input: RequestInfo,
@@ -106,11 +117,20 @@ export default function AddAssetDialog({
   const [notes, setNotes] = useState("");
   const [description, setDescription] = useState("");
 
-  const canSubmit = useMemo(() => name.trim().length > 0, [name]);
+  const canSubmit = useMemo(
+    () => name.trim().length > 0 && !busy,
+    [name, busy],
+  );
+
   const showPreview = useMemo(
     () => isProbablyUrl(imageUrl) && !imgBroken,
     [imageUrl, imgBroken],
   );
+
+  const showInvalidUrlHint = useMemo(() => {
+    const v = imageUrl.trim();
+    return v.length > 0 && !isProbablyUrl(v);
+  }, [imageUrl]);
 
   function resetForm() {
     setType("LAPTOP");
@@ -135,7 +155,7 @@ export default function AddAssetDialog({
   }, [open]);
 
   async function generateDescription() {
-    if (!canSubmit) return;
+    if (name.trim().length === 0 || busy) return;
 
     setGenerating(true);
     setError(null);
@@ -171,7 +191,7 @@ export default function AddAssetDialog({
   }
 
   async function save() {
-    if (!canSubmit) return;
+    if (name.trim().length === 0 || busy) return;
 
     setSaving(true);
     setError(null);
@@ -194,7 +214,7 @@ export default function AddAssetDialog({
       });
 
       onCreated(created);
-      setOpen(false); // will trigger reset via effect
+      setOpen(false);
     } catch (e) {
       console.error(e);
       setError(
@@ -208,204 +228,207 @@ export default function AddAssetDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>Add Asset</Button>
+        <Button>Add asset</Button>
       </DialogTrigger>
 
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>New asset</DialogTitle>
+          <DialogDescription>
+            Add the essentials first. You can refine details later.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4">
-          {/* Top controls */}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="grid gap-1">
-              <Label>Type</Label>
-              <Select
-                value={type}
-                onValueChange={(v) => setType(v as AssetType)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TYPE_OPTIONS.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-1">
-              <Label>Status</Label>
-              <Select
-                value={status}
-                onValueChange={(v) => setStatus(v as AssetStatus)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Primary fields */}
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-1)]">
-            <div className="grid gap-3">
-              <div className="grid gap-1">
-                <Label>
+        <form
+          className="grid gap-5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void save();
+          }}
+        >
+          {/* Essentials */}
+          <div className="grid gap-4">
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-1 md:col-span-2">
+                <Label htmlFor="asset-name">
                   Name <span className="text-destructive">*</span>
                 </Label>
                 <Input
+                  id="asset-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="MacBook Pro 14 (M3)"
+                  placeholder="e.g. MacBook Pro 14 (M3)"
+                  autoFocus
                 />
-                <p className="text-xs text-muted-foreground">
-                  This is the label you’ll search for in the grid.
-                </p>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-1">
-                  <Label>Brand</Label>
-                  <Input
-                    value={brand}
-                    onChange={(e) => setBrand(e.target.value)}
-                    placeholder="Apple"
-                  />
-                </div>
-
-                <div className="grid gap-1">
-                  <Label>Model</Label>
-                  <Input
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    placeholder="Axxxx"
-                  />
-                </div>
               </div>
 
               <div className="grid gap-1">
-                <Label>Serial</Label>
+                <Label>Type</Label>
+                <Select
+                  value={type}
+                  onValueChange={(v) => setType(v as AssetType)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TYPE_OPTIONS.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {labelize(t)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-1">
+                <Label>Status</Label>
+                <Select
+                  value={status}
+                  onValueChange={(v) => setStatus(v as AssetStatus)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {labelize(s)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-1">
+                <Label htmlFor="asset-brand">Brand</Label>
                 <Input
+                  id="asset-brand"
+                  value={brand}
+                  onChange={(e) => setBrand(e.target.value)}
+                  placeholder="Optional"
+                />
+              </div>
+
+              <div className="grid gap-1">
+                <Label htmlFor="asset-model">Model</Label>
+                <Input
+                  id="asset-model"
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  placeholder="Optional"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-1 md:col-span-2">
+                <Label htmlFor="asset-serial">Serial number</Label>
+                <Input
+                  id="asset-serial"
                   value={serialNumber}
                   onChange={(e) => setSerialNumber(e.target.value)}
-                  placeholder="Serial number"
+                  placeholder="Optional"
                 />
               </div>
-            </div>
-          </div>
 
-          {/* Image */}
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-1)]">
-            <div className="grid gap-2">
               <div className="grid gap-1">
-                <Label>Image URL</Label>
-                <Input
-                  value={imageUrl}
-                  onChange={(e) => {
-                    setImageUrl(e.target.value);
-                    setImgBroken(false);
-                  }}
-                  placeholder="https://..."
-                />
-                <p className="text-xs text-muted-foreground">
-                  Paste a public link (we’ll add real upload later).
-                </p>
-              </div>
+                <Label htmlFor="asset-image">Image URL</Label>
+                <div className="flex items-center gap-3">
+                  <Input
+                    id="asset-image"
+                    value={imageUrl}
+                    onChange={(e) => {
+                      setImageUrl(e.target.value);
+                      setImgBroken(false);
+                    }}
+                    placeholder="https://..."
+                  />
 
-              {imageUrl.trim() ? (
-                <div className="rounded-xl border border-border bg-background p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 overflow-hidden rounded-lg border border-border bg-card">
-                      {showPreview ? (
-                        <img
-                          src={imageUrl.trim()}
-                          alt="Preview"
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                          onError={() => setImgBroken(true)}
-                        />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center text-xs text-muted-foreground">
-                          {isProbablyUrl(imageUrl)
-                            ? "No preview"
-                            : "Invalid URL"}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">Preview</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {imageUrl.trim()}
-                      </p>
-                    </div>
+                  {/* Quiet thumbnail preview */}
+                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-border bg-muted/30">
+                    {showPreview ? (
+                      <img
+                        src={imageUrl.trim()}
+                        alt="Preview"
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        onError={() => setImgBroken(true)}
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-[10px] text-muted-foreground">
+                        IMG
+                      </div>
+                    )}
                   </div>
-
-                  {imgBroken ? (
-                    <p className="mt-2 text-xs text-destructive">
-                      Image could not be loaded. Check the URL.
-                    </p>
-                  ) : null}
                 </div>
-              ) : null}
+
+                {showInvalidUrlHint ? (
+                  <p className="text-xs text-muted-foreground">
+                    Enter a valid http(s) URL to show a preview.
+                  </p>
+                ) : null}
+
+                {imgBroken && isProbablyUrl(imageUrl) ? (
+                  <p className="text-xs text-destructive">
+                    Image couldn’t be loaded. Check the URL.
+                  </p>
+                ) : null}
+              </div>
             </div>
           </div>
 
-          {/* Notes + description */}
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-1)]">
-            <div className="grid gap-3">
-              <div className="grid gap-1">
-                <Label>Notes</Label>
-                <Textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Optional internal notes…"
-                />
+          {/* Details */}
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-1">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="asset-description">Description</Label>
+
+                {/* Tertiary helper action (not competing with Save) */}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={generateDescription}
+                  disabled={busy || name.trim().length === 0}
+                  className="h-8 px-2"
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  {generating ? "Generating…" : "Generate"}
+                </Button>
               </div>
 
-              <div className="grid gap-1">
-                <div className="flex items-center justify-between gap-3">
-                  <Label>Description (editable)</Label>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={generateDescription}
-                    disabled={busy || !canSubmit}
-                  >
-                    {generating ? "Generating…" : "Generate (AI)"}
-                  </Button>
-                </div>
+              <Textarea
+                id="asset-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={8}
+                placeholder="Optional. You can generate this with AI, then edit."
+              />
+            </div>
 
-                <Textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={6}
-                  placeholder="AI-generated description will appear here…"
-                />
-              </div>
+            <div className="grid gap-1">
+              <Label htmlFor="asset-notes">Notes</Label>
+              <Textarea
+                id="asset-notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={8}
+                placeholder="Internal notes (optional)"
+              />
             </div>
           </div>
 
           {error ? (
-            <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3">
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3">
               <p className="text-sm text-destructive">{error}</p>
             </div>
           ) : null}
 
-          <DialogFooter className="sm:justify-end gap-2">
+          <DialogFooter className="gap-2 sm:justify-end">
             <Button
               type="button"
               variant="secondary"
@@ -414,11 +437,11 @@ export default function AddAssetDialog({
             >
               Cancel
             </Button>
-            <Button type="button" onClick={save} disabled={busy || !canSubmit}>
+            <Button type="submit" disabled={!canSubmit}>
               {saving ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

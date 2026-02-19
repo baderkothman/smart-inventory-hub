@@ -14,8 +14,9 @@ function Label({
       data-slot="label"
       className={cn(
         [
+          // Slightly quieter than default to reduce "visual shouting"
           "text-[13px] font-medium leading-none tracking-[-0.01em]",
-          "text-foreground/90",
+          "text-foreground/85",
           "select-none",
           "peer-disabled:cursor-not-allowed peer-disabled:opacity-60",
         ].join(" "),

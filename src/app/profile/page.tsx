@@ -1,16 +1,28 @@
 // src/app/profile/page.tsx
 import Image from "next/image";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { SignOutButton } from "@clerk/nextjs";
+
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+import { LayoutGrid, MoreHorizontal, Settings, LogOut } from "lucide-react";
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-border py-3 last:border-b-0">
       <div className="text-sm font-medium text-foreground/90">{label}</div>
-      <div className="text-sm text-muted-foreground text-right break-all max-w-[70%]">
+      <div className="max-w-[70%] break-all text-right text-sm text-muted-foreground">
         {value}
       </div>
     </div>
@@ -26,6 +38,67 @@ function initialsFromName(name: string) {
   const a = parts[0]?.[0] ?? "U";
   const b = parts[1]?.[0] ?? "";
   return (a + b).toUpperCase();
+}
+
+function PageHeader({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="min-w-0 space-y-1">
+        <h1 className="text-2xl font-semibold tracking-[-0.02em]">{title}</h1>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+
+      <div className="flex items-center gap-2">
+        {/* Primary CTA */}
+        <Button asChild>
+          <Link href="/dashboard">Open dashboard</Link>
+        </Button>
+
+        {/* Secondary: overflow menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="icon" aria-label="More actions">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuLabel>Quick links</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard" className="flex items-center">
+                <LayoutGrid className="mr-2 h-4 w-4" />
+                Dashboard
+              </Link>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem asChild>
+              <Link href="/settings" className="flex items-center">
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </Link>
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+
+            <SignOutButton redirectUrl="/">
+              <DropdownMenuItem className="text-destructive focus:text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign out
+              </DropdownMenuItem>
+            </SignOutButton>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
 }
 
 export default async function ProfilePage() {
@@ -52,32 +125,12 @@ export default async function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto w-full max-w-6xl px-6 py-6 space-y-4">
+      <div className="mx-auto w-full max-w-6xl space-y-5 px-6 py-6">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-[-0.02em]">
-              Profile
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Your account details and identity.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button asChild variant="secondary">
-              <Link href="/dashboard">Dashboard</Link>
-            </Button>
-
-            <Button asChild variant="outline">
-              <Link href="/settings">Settings</Link>
-            </Button>
-
-            <SignOutButton redirectUrl="/">
-              <Button variant="outline">Sign out</Button>
-            </SignOutButton>
-          </div>
-        </div>
+        <PageHeader
+          title="Profile"
+          description="Your account details and identity."
+        />
 
         {/* Profile card */}
         <div className="rounded-2xl border border-border bg-card shadow-[var(--shadow-1)]">
@@ -99,10 +152,10 @@ export default async function ProfilePage() {
             </div>
 
             <div className="min-w-0">
-              <p className="text-lg font-semibold tracking-[-0.02em] truncate">
+              <p className="truncate text-lg font-semibold tracking-[-0.02em]">
                 {fullName}
               </p>
-              <p className="text-sm text-muted-foreground truncate">{email}</p>
+              <p className="truncate text-sm text-muted-foreground">{email}</p>
             </div>
           </div>
 
@@ -114,40 +167,18 @@ export default async function ProfilePage() {
           </div>
         </div>
 
-        {/* Quick actions */}
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-1)]">
-            <p className="text-sm font-semibold tracking-[-0.01em]">
-              Account security
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Manage sign-in methods and sessions from Settings.
-            </p>
-            <div className="mt-4">
-              <Button asChild variant="outline" size="sm">
-                <Link href="/settings">Open settings</Link>
-              </Button>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-1)]">
-            <p className="text-sm font-semibold tracking-[-0.01em]">
-              Inventory access
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Your assets are scoped to your session — other users can’t view
-              them.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-1)]">
-            <p className="text-sm font-semibold tracking-[-0.01em]">
-              Next improvement
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Add profile preferences (theme, default page, etc.).
-            </p>
-          </div>
+        {/* Lightweight note (avoid extra cards/CTAs) */}
+        <div className="rounded-2xl border border-border bg-card px-5 py-4 shadow-[var(--shadow-1)]">
+          <p className="text-sm font-semibold tracking-[-0.01em]">
+            Account security
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage sign-in methods and sessions in{" "}
+            <Link href="/settings" className="underline underline-offset-4">
+              Settings
+            </Link>
+            .
+          </p>
         </div>
       </div>
     </div>

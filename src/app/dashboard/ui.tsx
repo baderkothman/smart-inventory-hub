@@ -1,24 +1,30 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import type {
   ColDef,
   ICellRendererParams,
+  RowDoubleClickedEvent,
   ValueFormatterParams,
-  GridReadyEvent,
-  RowClickedEvent,
 } from "ag-grid-community";
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+import { MoreHorizontal, Pencil, RefreshCw, Trash2 } from "lucide-react";
 
 import AddAssetDialog from "./widgets/add-asset-dialog";
 import EditAssetDialog from "./widgets/edit-asset-dialog";
 import DeleteAssetDialog from "./widgets/delete-asset-dialog";
-
-import { SignOutButton } from "@clerk/nextjs";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -107,13 +113,12 @@ function ImageCell(p: ICellRendererParams<AssetRow, string | null>) {
   const name = p.data?.name ?? "Asset";
   const initials = getInitials(name);
 
-  // If image fails to load, we show fallback initials (M365-like)
   const [failed, setFailed] = useState(false);
 
   if (!url || failed) {
     return (
       <div className="flex items-center justify-center">
-        <div className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-secondary text-secondary-foreground text-xs font-semibold">
+        <div className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-secondary text-xs font-semibold text-secondary-foreground">
           {initials}
         </div>
       </div>
@@ -134,7 +139,7 @@ function ImageCell(p: ICellRendererParams<AssetRow, string | null>) {
   );
 }
 
-function ActionsCell(
+function RowMenuCell(
   props: ICellRendererParams<AssetRow, unknown> & {
     onEdit: (row: AssetRow) => void;
     onDelete: (row: AssetRow) => void;
@@ -143,25 +148,43 @@ function ActionsCell(
   const row = props.data;
   if (!row) return null;
 
-  return (
-    <div className="flex items-center gap-2">
-      <Button
-        variant="secondary"
-        size="sm"
-        className="h-8"
-        onClick={() => props.onEdit(row)}
-      >
-        Edit
-      </Button>
+  const stopRowEvents = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation();
+  };
 
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-8 border-destructive/30 text-destructive hover:bg-destructive/10"
-        onClick={() => props.onDelete(row)}
-      >
-        Delete
-      </Button>
+  return (
+    <div className="flex items-center justify-end pr-1">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onPointerDown={stopRowEvents}
+            onClick={stopRowEvents}
+            aria-label="Row actions"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuItem onSelect={() => props.onEdit(row)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            onSelect={() => props.onDelete(row)}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
@@ -174,6 +197,33 @@ export default function DashboardClient() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [activeRow, setActiveRow] = useState<AssetRow | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await fetchJson<AssetRow[]>("/api/assets");
+      setRows(data);
+    } catch (e) {
+      console.error(e);
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const openEdit = useCallback((row: AssetRow) => {
+    setActiveRow(row);
+    setEditOpen(true);
+  }, []);
+
+  const openDelete = useCallback((row: AssetRow) => {
+    setActiveRow(row);
+    setDeleteOpen(true);
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   const defaultColDef = useMemo<ColDef<AssetRow>>(
     () => ({
@@ -213,106 +263,86 @@ export default function DashboardClient() {
         valueFormatter: createdFmt,
       },
       {
-        headerName: "Actions",
-        width: 190,
+        headerName: "",
+        width: 64,
         pinned: "right",
         sortable: false,
         filter: false,
         resizable: false,
-        cellRenderer: ActionsCell,
+        cellRenderer: RowMenuCell,
         cellRendererParams: {
-          onEdit: (row: AssetRow) => {
-            setActiveRow(row);
-            setEditOpen(true);
-          },
-          onDelete: (row: AssetRow) => {
-            setActiveRow(row);
-            setDeleteOpen(true);
-          },
+          onEdit: (row: AssetRow) => openEdit(row),
+          onDelete: (row: AssetRow) => openDelete(row),
         },
       },
     ];
-  }, []);
+  }, [openDelete, openEdit]);
 
-  async function refresh() {
-    setLoading(true);
-    try {
-      const data = await fetchJson<AssetRow[]>("/api/assets");
-      setRows(data);
-    } catch (e) {
-      console.error(e);
-      setRows([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void refresh();
-  }, []);
-
-  function onRowClicked(e: RowClickedEvent<AssetRow>) {
-    // M365-ish interaction: click a row to edit quickly (ignore clicks on actions area)
-    if (!e.data) return;
-    setActiveRow(e.data);
-    setEditOpen(true);
-  }
-
-  function onGridReady(_e: GridReadyEvent<AssetRow>) {
-    // placeholder: if later you want autosize columns, etc.
-  }
+  const onRowDoubleClicked = useCallback(
+    (e: RowDoubleClickedEvent<AssetRow>) => {
+      if (!e.data) return;
+      openEdit(e.data);
+    },
+    [openEdit],
+  );
 
   return (
-    <div className="min-h-[calc(100vh-0px)] bg-background">
-      <div className="mx-auto w-full max-w-6xl space-y-4 px-6 py-6">
-        {/* Page header */}
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto w-full max-w-6xl space-y-5 px-6 py-6">
+        {/* Page header: title + description + (search + primary action) */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold tracking-[-0.02em]">
               Assets
             </h1>
             <p className="text-sm text-muted-foreground">
-              Add, search, edit, and manage your inventory in one place.
+              Manage inventory with a fast grid and minimal actions.
             </p>
           </div>
 
-          {/* Command bar */}
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-            <div className="w-full sm:w-[280px]">
+            <div className="w-full sm:w-[320px]">
               <Input
                 value={quickFilterText}
                 onChange={(e) => setQuickFilterText(e.target.value)}
-                placeholder="Search assets…"
+                placeholder="Search by name, brand, model, serial…"
                 className="h-9"
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              <Button variant="secondary" onClick={refresh} disabled={loading}>
-                Refresh
-              </Button>
-
-              <AddAssetDialog
-                onCreated={(created) => {
-                  // created is already compatible with AssetRow shape
-                  setRows((prev) => [created, ...prev]);
-                }}
-              />
-
-              <SignOutButton redirectUrl="/">
-                <Button variant="outline">Sign out</Button>
-              </SignOutButton>
-            </div>
+            {/* Primary CTA */}
+            <AddAssetDialog
+              onCreated={(created) => {
+                setRows((prev) => [created, ...prev]);
+              }}
+            />
           </div>
         </div>
 
         {/* Grid surface */}
         <div className="rounded-2xl border border-border bg-card shadow-[var(--shadow-1)]">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <div className="text-sm font-semibold">Inventory</div>
-            <div className="text-xs text-muted-foreground">
-              {loading ? "Loading…" : `${rows.length} item(s)`}
+          <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold">Inventory</div>
+              <div className="text-xs text-muted-foreground">
+                {loading ? "Loading…" : `${rows.length} asset(s)`}
+              </div>
             </div>
+
+            {/* Subtle utility action (not a competing CTA) */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={refresh}
+              disabled={loading}
+              aria-label="Refresh"
+              title="Refresh"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />
+            </Button>
           </div>
 
           <div className="p-3">
@@ -332,12 +362,16 @@ export default function DashboardClient() {
                 paginationPageSize={25}
                 getRowId={(p) => p.data.id}
                 rowHeight={52}
+                rowSelection="single"
                 suppressCellFocus
                 enableCellTextSelection
-                onRowClicked={onRowClicked}
-                onGridReady={onGridReady}
+                onRowDoubleClicked={onRowDoubleClicked}
               />
             </div>
+          </div>
+
+          <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
+            Tip: double-click a row to edit. Use the “…” menu for delete.
           </div>
         </div>
 

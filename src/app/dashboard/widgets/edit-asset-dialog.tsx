@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -116,6 +117,11 @@ export default function EditAssetDialog({
     [imageUrl, imgBroken],
   );
 
+  const showInvalidUrlHint = useMemo(() => {
+    const v = imageUrl.trim();
+    return v.length > 0 && !isProbablyUrl(v);
+  }, [imageUrl]);
+
   // Load asset into form when opened
   useEffect(() => {
     if (!open) {
@@ -183,172 +189,171 @@ export default function EditAssetDialog({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Edit asset</DialogTitle>
+          <DialogDescription>
+            Update key details. Keep it short—only what matters for inventory.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4">
-          {/* Top controls */}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="grid gap-1">
-              <Label>Type</Label>
-              <Select
-                value={type}
-                onValueChange={(v) => setType(v as AssetType)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TYPE_OPTIONS.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-1">
-              <Label>Status</Label>
-              <Select
-                value={status}
-                onValueChange={(v) => setStatus(v as AssetStatus)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Primary fields */}
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-1)]">
-            <div className="grid gap-3">
-              <div className="grid gap-1">
+        <div className="grid gap-5">
+          {/* Key fields */}
+          <div className="grid gap-4">
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-1 md:col-span-2">
                 <Label>
                   Name <span className="text-destructive">*</span>
                 </Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-1">
-                  <Label>Brand</Label>
-                  <Input
-                    value={brand}
-                    onChange={(e) => setBrand(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-1">
-                  <Label>Model</Label>
-                  <Input
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                  />
-                </div>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Dell Latitude 5420"
+                />
               </div>
 
               <div className="grid gap-1">
-                <Label>Serial</Label>
+                <Label>Type</Label>
+                <Select
+                  value={type}
+                  onValueChange={(v) => setType(v as AssetType)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TYPE_OPTIONS.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-1">
+                <Label>Status</Label>
+                <Select
+                  value={status}
+                  onValueChange={(v) => setStatus(v as AssetStatus)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-1">
+                <Label>Brand</Label>
+                <Input
+                  value={brand}
+                  onChange={(e) => setBrand(e.target.value)}
+                  placeholder="Optional"
+                />
+              </div>
+
+              <div className="grid gap-1">
+                <Label>Model</Label>
+                <Input
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  placeholder="Optional"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-1 md:col-span-2">
+                <Label>Serial number</Label>
                 <Input
                   value={serialNumber}
                   onChange={(e) => setSerialNumber(e.target.value)}
+                  placeholder="Optional"
                 />
               </div>
-            </div>
-          </div>
 
-          {/* Image */}
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-1)]">
-            <div className="grid gap-2">
               <div className="grid gap-1">
                 <Label>Image URL</Label>
-                <Input
-                  value={imageUrl}
-                  onChange={(e) => {
-                    setImageUrl(e.target.value);
-                    setImgBroken(false);
-                  }}
-                  placeholder="https://..."
-                />
-              </div>
+                <div className="flex items-center gap-3">
+                  <Input
+                    value={imageUrl}
+                    onChange={(e) => {
+                      setImageUrl(e.target.value);
+                      setImgBroken(false);
+                    }}
+                    placeholder="https://..."
+                  />
 
-              {imageUrl.trim() ? (
-                <div className="rounded-xl border border-border bg-background p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 overflow-hidden rounded-lg border border-border bg-card">
-                      {showPreview ? (
-                        <img
-                          src={imageUrl.trim()}
-                          alt="Preview"
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                          onError={() => setImgBroken(true)}
-                        />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center text-xs text-muted-foreground">
-                          {isProbablyUrl(imageUrl)
-                            ? "No preview"
-                            : "Invalid URL"}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">Preview</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {imageUrl.trim()}
-                      </p>
-                    </div>
+                  {/* Small, quiet preview (no extra card) */}
+                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-border bg-muted/30">
+                    {showPreview ? (
+                      <img
+                        src={imageUrl.trim()}
+                        alt="Preview"
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        onError={() => setImgBroken(true)}
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-[10px] text-muted-foreground">
+                        IMG
+                      </div>
+                    )}
                   </div>
-
-                  {imgBroken ? (
-                    <p className="mt-2 text-xs text-destructive">
-                      Image could not be loaded. Check the URL.
-                    </p>
-                  ) : null}
                 </div>
-              ) : null}
+
+                {showInvalidUrlHint ? (
+                  <p className="text-xs text-muted-foreground">
+                    Enter a valid http(s) URL to show a preview.
+                  </p>
+                ) : null}
+
+                {imgBroken && isProbablyUrl(imageUrl) ? (
+                  <p className="text-xs text-destructive">
+                    Image couldn’t be loaded. Check the URL.
+                  </p>
+                ) : null}
+              </div>
             </div>
           </div>
 
-          {/* Notes + description */}
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-1)]">
-            <div className="grid gap-3">
-              <div className="grid gap-1">
-                <Label>Notes</Label>
-                <Textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Optional internal notes…"
-                />
-              </div>
+          {/* Details */}
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-1">
+              <Label>Description</Label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={8}
+                placeholder="Optional. Keep it concise."
+              />
+            </div>
 
-              <div className="grid gap-1">
-                <Label>Description</Label>
-                <Textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={6}
-                />
-              </div>
+            <div className="grid gap-1">
+              <Label>Notes</Label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={8}
+                placeholder="Internal notes (optional)"
+              />
             </div>
           </div>
 
           {error ? (
-            <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3">
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3">
               <p className="text-sm text-destructive">{error}</p>
             </div>
           ) : null}
 
-          <DialogFooter className="sm:justify-end gap-2">
+          <DialogFooter className="gap-2 sm:justify-end">
             <Button
               variant="secondary"
               onClick={() => onOpenChange(false)}

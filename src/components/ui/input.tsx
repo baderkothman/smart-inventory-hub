@@ -9,12 +9,11 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       data-slot="input"
       className={cn(
         [
-          // Fluent input: calm surface + subtle border
+          // Calm Fluent input: subtle border, no "button-like" shadow
           "h-9 w-full min-w-0 rounded-md border border-input",
-          "bg-card text-foreground",
+          "bg-background text-foreground",
           "px-3 py-1 text-[14px] leading-5",
           "placeholder:text-muted-foreground",
-          "shadow-sm",
           "transition-colors duration-150 ease-[cubic-bezier(0.2,0,0,1)]",
           "outline-none",
 
@@ -31,6 +30,8 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
 
           // File input
           "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium",
+
+          // Selection
           "selection:bg-primary selection:text-primary-foreground",
         ].join(" "),
         className,

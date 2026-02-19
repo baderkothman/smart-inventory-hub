@@ -38,9 +38,8 @@ function SelectTrigger({
         [
           "inline-flex w-full items-center justify-between gap-2",
           "rounded-md border border-input",
-          "bg-card text-foreground",
+          "bg-background text-foreground",
           "px-3 text-[14px] leading-5",
-          "shadow-sm",
           "outline-none",
           "transition-colors duration-150 ease-[cubic-bezier(0.2,0,0,1)]",
 

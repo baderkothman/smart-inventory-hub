@@ -6,31 +6,32 @@ import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
   [
-    // Fluent-ish base
+    // Fluent / Microsoft 365-ish base
     "inline-flex items-center justify-center gap-2 whitespace-nowrap",
     "rounded-md text-sm font-medium tracking-[-0.01em]",
     "transition-colors duration-150 ease-[cubic-bezier(0.2,0,0,1)]",
     "select-none",
     "disabled:pointer-events-none disabled:opacity-60",
     "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/20",
-    "focus-visible:border-ring",
+    // Icons
     "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-    "border border-transparent",
+    // Use border only when variant needs it (avoid always-on border noise)
+    "border",
   ].join(" "),
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/85 shadow-sm",
+          "border-transparent bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:bg-primary/85",
         secondary:
-          "bg-secondary text-secondary-foreground border-border hover:bg-secondary/80 active:bg-secondary/70",
+          "border-border bg-secondary text-secondary-foreground hover:bg-secondary/80 active:bg-secondary/70",
         outline:
-          "bg-background text-foreground border-border hover:bg-accent hover:text-accent-foreground active:bg-accent/80",
+          "border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent/80",
         ghost:
-          "bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent/80",
+          "border-transparent bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent/80",
         destructive:
-          "bg-destructive text-white hover:bg-destructive/90 active:bg-destructive/85 focus-visible:ring-destructive/20",
-        link: "bg-transparent text-primary border-transparent hover:underline underline-offset-4",
+          "border-transparent bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 active:bg-destructive/85 focus-visible:ring-destructive/20",
+        link: "border-transparent bg-transparent text-primary hover:underline underline-offset-4",
       },
       size: {
         default: "h-9 px-4",
@@ -52,19 +53,19 @@ const buttonVariants = cva(
 
 function Button({
   className,
-  variant = "default",
-  size = "default",
+  variant,
+  size,
   asChild = false,
   ...props
-}: React.ComponentProps<"button"> &
+}: React.ComponentPropsWithoutRef<"button"> &
   VariantProps<typeof buttonVariants> & { asChild?: boolean }) {
   const Comp = asChild ? Slot : "button";
 
   return (
     <Comp
       data-slot="button"
-      data-variant={variant}
-      data-size={size}
+      data-variant={variant ?? "default"}
+      data-size={size ?? "default"}
       className={cn(buttonVariants({ variant, size }), className)}
       {...props}
     />

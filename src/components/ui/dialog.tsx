@@ -98,6 +98,7 @@ function DialogContent({
                 "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/20",
               ].join(" "),
             )}
+            aria-label="Close"
           >
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
@@ -134,9 +135,11 @@ function DialogFooter({
       {...props}
     >
       {children}
+
+      {/* Optional neutral close (kept, but not encouraged for most screens) */}
       {showCloseButton ? (
         <DialogPrimitive.Close asChild>
-          <Button variant="outline">Close</Button>
+          <Button variant="secondary">Close</Button>
         </DialogPrimitive.Close>
       ) : null}
     </div>
