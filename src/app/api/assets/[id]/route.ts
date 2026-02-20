@@ -1,131 +1,119 @@
+// src/app/api/assets/[id]/route.ts
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { db } from "@/db";
-import { assets } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 
-export const runtime = "nodejs";
+import { db } from "@/db";
+import { assets } from "@/db/schema";
 
-function toIso(v: unknown) {
-  if (v instanceof Date) return v.toISOString();
-  return v;
+function jsonError(message: string, status: number) {
+  return NextResponse.json({ error: message }, { status });
 }
 
-function normalizeAssetRow(row: any) {
+function serializeAsset(row: any) {
   return {
     ...row,
-    createdAt: toIso(row.createdAt),
-    updatedAt: toIso(row.updatedAt),
+    createdAt:
+      row?.createdAt instanceof Date
+        ? row.createdAt.toISOString()
+        : row?.createdAt,
+    updatedAt:
+      row?.updatedAt instanceof Date
+        ? row.updatedAt.toISOString()
+        : row?.updatedAt,
   };
 }
 
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } },
+  ctx: { params: Promise<{ id: string }> | { id: string } },
 ) {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const { userId } = await auth();
+  if (!userId) return jsonError("Unauthorized", 401);
 
-    const id = params.id;
+  const params = await Promise.resolve(ctx.params as any);
+  const id = String(params?.id ?? "").trim();
+  if (!id) return jsonError("Not found", 404);
 
-    const [row] = await db
-      .select()
-      .from(assets)
-      .where(and(eq(assets.id, id), eq(assets.createdByUserId, userId)));
+  const rows = await db
+    .select()
+    .from(assets)
+    .where(and(eq(assets.id, id), eq(assets.createdByUserId, userId)))
+    .limit(1);
 
-    if (!row) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
+  const row = rows[0];
+  if (!row) return jsonError("Not found", 404);
 
-    return NextResponse.json(normalizeAssetRow(row));
-  } catch (err) {
-    console.error("GET /api/assets/[id] failed:", err);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 },
-    );
-  }
+  return NextResponse.json(serializeAsset(row));
 }
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } },
+  ctx: { params: Promise<{ id: string }> | { id: string } },
 ) {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const { userId } = await auth();
+  if (!userId) return jsonError("Unauthorized", 401);
 
-    const id = params.id;
-    const data = await req.json();
+  const params = await Promise.resolve(ctx.params as any);
+  const id = String(params?.id ?? "").trim();
+  if (!id) return jsonError("Not found", 404);
 
-    const name = data?.name != null ? String(data.name).trim() : null;
+  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
-    const [updated] = await db
-      .update(assets)
-      .set({
-        type: data.type,
-        name: name ?? undefined,
-        brand: data.brand ?? null,
-        model: data.model ?? null,
-        serialNumber: data.serialNumber ?? null,
-        status: data.status ?? "IN_STOCK",
-        assignedToUserId: data.assignedToUserId ?? null,
-        purchaseDate: data.purchaseDate ?? null,
-        warrantyEndDate: data.warrantyEndDate ?? null,
-        description: data.description ?? null,
-        notes: data.notes ?? null,
-        imageUrl: data.imageUrl ?? null,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(assets.id, id), eq(assets.createdByUserId, userId)))
-      .returning();
+  // Only allow fields your UI edits
+  const patch: Record<string, unknown> = {
+    type: body.type,
+    status: body.status,
+    name: typeof body.name === "string" ? body.name.trim() : body.name,
+    brand: typeof body.brand === "string" ? body.brand.trim() : body.brand,
+    model: typeof body.model === "string" ? body.model.trim() : body.model,
+    serialNumber:
+      typeof body.serialNumber === "string"
+        ? body.serialNumber.trim()
+        : body.serialNumber,
+    imageUrl:
+      typeof body.imageUrl === "string" ? body.imageUrl.trim() : body.imageUrl,
+    notes: typeof body.notes === "string" ? body.notes.trim() : body.notes,
+    description:
+      typeof body.description === "string"
+        ? body.description.trim()
+        : body.description,
+    updatedAt: new Date(),
+  };
 
-    if (!updated) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
+  // Remove undefined keys so we don’t overwrite unintentionally
+  Object.keys(patch).forEach((k) => patch[k] === undefined && delete patch[k]);
 
-    return NextResponse.json(normalizeAssetRow(updated));
-  } catch (err) {
-    console.error("PATCH /api/assets/[id] failed:", err);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 },
-    );
-  }
+  const updatedRows = await db
+    .update(assets)
+    .set(patch as any)
+    .where(and(eq(assets.id, id), eq(assets.createdByUserId, userId)))
+    .returning();
+
+  const updated = updatedRows[0];
+  if (!updated) return jsonError("Not found", 404);
+
+  return NextResponse.json(serializeAsset(updated));
 }
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { id: string } },
+  ctx: { params: Promise<{ id: string }> | { id: string } },
 ) {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const { userId } = await auth();
+  if (!userId) return jsonError("Unauthorized", 401);
 
-    const id = params.id;
+  const params = await Promise.resolve(ctx.params as any);
+  const id = String(params?.id ?? "").trim();
+  if (!id) return jsonError("Not found", 404);
 
-    const [deleted] = await db
-      .delete(assets)
-      .where(and(eq(assets.id, id), eq(assets.createdByUserId, userId)))
-      .returning({ id: assets.id });
+  const deletedRows = await db
+    .delete(assets)
+    .where(and(eq(assets.id, id), eq(assets.createdByUserId, userId)))
+    .returning({ id: assets.id });
 
-    if (!deleted) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
+  const deleted = deletedRows[0];
+  if (!deleted) return jsonError("Not found", 404);
 
-    return NextResponse.json({ id: deleted.id });
-  } catch (err) {
-    console.error("DELETE /api/assets/[id] failed:", err);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 },
-    );
-  }
+  return NextResponse.json({ id: String(deleted.id) });
 }

@@ -287,122 +287,116 @@ export default function DashboardClient() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto w-full max-w-6xl space-y-5 px-6 py-6">
-        {/* Page header: title + description + (search + primary action) */}
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-[-0.02em]">
-              Assets
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Manage inventory with a fast grid and minimal actions.
-            </p>
+    <div className="space-y-5">
+      {/* Page header: title + description + (search + primary action) */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-[-0.02em]">Assets</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage inventory with a fast grid and minimal actions.
+          </p>
+        </div>
+
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <div className="w-full sm:w-[320px]">
+            <Input
+              value={quickFilterText}
+              onChange={(e) => setQuickFilterText(e.target.value)}
+              placeholder="Search by name, brand, model, serial…"
+              className="h-9"
+            />
           </div>
 
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-            <div className="w-full sm:w-[320px]">
-              <Input
-                value={quickFilterText}
-                onChange={(e) => setQuickFilterText(e.target.value)}
-                placeholder="Search by name, brand, model, serial…"
-                className="h-9"
-              />
-            </div>
+          {/* Primary CTA */}
+          <AddAssetDialog
+            onCreated={(created) => {
+              setRows((prev) => [created, ...prev]);
+            }}
+          />
+        </div>
+      </div>
 
-            {/* Primary CTA */}
-            <AddAssetDialog
-              onCreated={(created) => {
-                setRows((prev) => [created, ...prev]);
-              }}
+      {/* Grid surface */}
+      <div className="rounded-2xl border border-border bg-card shadow-[var(--shadow-1)]">
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold">Inventory</div>
+            <div className="text-xs text-muted-foreground">
+              {loading ? "Loading…" : `${rows.length} asset(s)`}
+            </div>
+          </div>
+
+          {/* Utility action (not a competing CTA) */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={refresh}
+            disabled={loading}
+            aria-label="Refresh"
+            title="Refresh"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
+
+        <div className="p-3">
+          <div
+            className="ag-theme-quartz"
+            style={{ height: 650, width: "100%" }}
+          >
+            <AgGridReact<AssetRow>
+              theme="legacy"
+              rowData={rows}
+              columnDefs={colDefs}
+              defaultColDef={defaultColDef}
+              quickFilterText={quickFilterText}
+              loading={loading}
+              loadingOverlayComponent={GridLoadingOverlay}
+              pagination
+              paginationPageSize={25}
+              getRowId={(p) => p.data.id}
+              rowHeight={52}
+              rowSelection="single"
+              suppressCellFocus
+              enableCellTextSelection
+              onRowDoubleClicked={onRowDoubleClicked}
             />
           </div>
         </div>
 
-        {/* Grid surface */}
-        <div className="rounded-2xl border border-border bg-card shadow-[var(--shadow-1)]">
-          <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-            <div className="min-w-0">
-              <div className="text-sm font-semibold">Inventory</div>
-              <div className="text-xs text-muted-foreground">
-                {loading ? "Loading…" : `${rows.length} asset(s)`}
-              </div>
-            </div>
-
-            {/* Subtle utility action (not a competing CTA) */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={refresh}
-              disabled={loading}
-              aria-label="Refresh"
-              title="Refresh"
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-              />
-            </Button>
-          </div>
-
-          <div className="p-3">
-            <div
-              className="ag-theme-quartz"
-              style={{ height: 650, width: "100%" }}
-            >
-              <AgGridReact<AssetRow>
-                theme="legacy"
-                rowData={rows}
-                columnDefs={colDefs}
-                defaultColDef={defaultColDef}
-                quickFilterText={quickFilterText}
-                loading={loading}
-                loadingOverlayComponent={GridLoadingOverlay}
-                pagination
-                paginationPageSize={25}
-                getRowId={(p) => p.data.id}
-                rowHeight={52}
-                rowSelection="single"
-                suppressCellFocus
-                enableCellTextSelection
-                onRowDoubleClicked={onRowDoubleClicked}
-              />
-            </div>
-          </div>
-
-          <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
-            Tip: double-click a row to edit. Use the “…” menu for delete.
-          </div>
+        <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
+          Tip: double-click a row to edit. Use the “…” menu for delete.
         </div>
-
-        {/* Modals */}
-        <EditAssetDialog
-          open={editOpen}
-          onOpenChange={(o) => {
-            setEditOpen(o);
-            if (!o) setActiveRow(null);
-          }}
-          asset={activeRow}
-          onUpdated={(updated) => {
-            setRows((prev) =>
-              prev.map((r) => (r.id === updated.id ? updated : r)),
-            );
-          }}
-        />
-
-        <DeleteAssetDialog
-          open={deleteOpen}
-          onOpenChange={(o) => {
-            setDeleteOpen(o);
-            if (!o) setActiveRow(null);
-          }}
-          assetId={activeRow?.id ?? null}
-          assetName={activeRow?.name ?? null}
-          onDeleted={(id) => {
-            setRows((prev) => prev.filter((r) => r.id !== id));
-          }}
-        />
       </div>
+
+      {/* Modals */}
+      <EditAssetDialog
+        open={editOpen}
+        onOpenChange={(o) => {
+          setEditOpen(o);
+          if (!o) setActiveRow(null);
+        }}
+        asset={activeRow}
+        onUpdated={(updated) => {
+          setRows((prev) =>
+            prev.map((r) => (r.id === updated.id ? updated : r)),
+          );
+        }}
+      />
+
+      <DeleteAssetDialog
+        open={deleteOpen}
+        onOpenChange={(o) => {
+          setDeleteOpen(o);
+          if (!o) setActiveRow(null);
+        }}
+        assetId={activeRow?.id ?? null}
+        assetName={activeRow?.name ?? null}
+        onDeleted={(id) => {
+          setRows((prev) => prev.filter((r) => r.id !== id));
+        }}
+      />
     </div>
   );
 }
