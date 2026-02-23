@@ -10,7 +10,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -226,223 +225,224 @@ export default function AddAssetDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>Add asset</Button>
-      </DialogTrigger>
+    <>
+      {/* ✅ Normal button (no Radix Trigger) to avoid hydration mismatch */}
+      <Button type="button" onClick={() => setOpen(true)}>
+        Add asset
+      </Button>
 
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>New asset</DialogTitle>
-          <DialogDescription>
-            Add the essentials first. You can refine details later.
-          </DialogDescription>
-        </DialogHeader>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>New asset</DialogTitle>
+            <DialogDescription>
+              Add the essentials first. You can refine details later.
+            </DialogDescription>
+          </DialogHeader>
 
-        <form
-          className="grid gap-5"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void save();
-          }}
-        >
-          {/* Essentials */}
-          <div className="grid gap-4">
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="grid gap-1 md:col-span-2">
-                <Label htmlFor="asset-name">
-                  Name <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="asset-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. MacBook Pro 14 (M3)"
-                  autoFocus
-                />
-              </div>
-
-              <div className="grid gap-1">
-                <Label>Type</Label>
-                <Select
-                  value={type}
-                  onValueChange={(v) => setType(v as AssetType)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TYPE_OPTIONS.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {labelize(t)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="grid gap-1">
-                <Label>Status</Label>
-                <Select
-                  value={status}
-                  onValueChange={(v) => setStatus(v as AssetStatus)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {labelize(s)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-1">
-                <Label htmlFor="asset-brand">Brand</Label>
-                <Input
-                  id="asset-brand"
-                  value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                  placeholder="Optional"
-                />
-              </div>
-
-              <div className="grid gap-1">
-                <Label htmlFor="asset-model">Model</Label>
-                <Input
-                  id="asset-model"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  placeholder="Optional"
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="grid gap-1 md:col-span-2">
-                <Label htmlFor="asset-serial">Serial number</Label>
-                <Input
-                  id="asset-serial"
-                  value={serialNumber}
-                  onChange={(e) => setSerialNumber(e.target.value)}
-                  placeholder="Optional"
-                />
-              </div>
-
-              <div className="grid gap-1">
-                <Label htmlFor="asset-image">Image URL</Label>
-                <div className="flex items-center gap-3">
+          <form
+            className="grid gap-5"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void save();
+            }}
+          >
+            {/* Essentials */}
+            <div className="grid gap-4">
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid gap-1 md:col-span-2">
+                  <Label htmlFor="asset-name">
+                    Name <span className="text-destructive">*</span>
+                  </Label>
                   <Input
-                    id="asset-image"
-                    value={imageUrl}
-                    onChange={(e) => {
-                      setImageUrl(e.target.value);
-                      setImgBroken(false);
-                    }}
-                    placeholder="https://..."
+                    id="asset-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. MacBook Pro 14 (M3)"
+                    autoFocus
                   />
-
-                  {/* Quiet thumbnail preview */}
-                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-border bg-muted/30">
-                    {showPreview ? (
-                      <img
-                        src={imageUrl.trim()}
-                        alt="Preview"
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
-                        onError={() => setImgBroken(true)}
-                      />
-                    ) : (
-                      <div className="grid h-full w-full place-items-center text-[10px] text-muted-foreground">
-                        IMG
-                      </div>
-                    )}
-                  </div>
                 </div>
 
-                {showInvalidUrlHint ? (
-                  <p className="text-xs text-muted-foreground">
-                    Enter a valid http(s) URL to show a preview.
-                  </p>
-                ) : null}
-
-                {imgBroken && isProbablyUrl(imageUrl) ? (
-                  <p className="text-xs text-destructive">
-                    Image couldn’t be loaded. Check the URL.
-                  </p>
-                ) : null}
-              </div>
-            </div>
-          </div>
-
-          {/* Details */}
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="grid gap-1">
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor="asset-description">Description</Label>
-
-                {/* Tertiary helper action (not competing with Save) */}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={generateDescription}
-                  disabled={busy || name.trim().length === 0}
-                  className="h-8 px-2"
-                >
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  {generating ? "Generating…" : "Generate"}
-                </Button>
+                <div className="grid gap-1">
+                  <Label>Type</Label>
+                  <Select
+                    value={type}
+                    onValueChange={(v) => setType(v as AssetType)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TYPE_OPTIONS.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {labelize(t)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <Textarea
-                id="asset-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={8}
-                placeholder="Optional. You can generate this with AI, then edit."
-              />
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid gap-1">
+                  <Label>Status</Label>
+                  <Select
+                    value={status}
+                    onValueChange={(v) => setStatus(v as AssetStatus)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {labelize(s)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-1">
+                  <Label htmlFor="asset-brand">Brand</Label>
+                  <Input
+                    id="asset-brand"
+                    value={brand}
+                    onChange={(e) => setBrand(e.target.value)}
+                    placeholder="Optional"
+                  />
+                </div>
+
+                <div className="grid gap-1">
+                  <Label htmlFor="asset-model">Model</Label>
+                  <Input
+                    id="asset-model"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid gap-1 md:col-span-2">
+                  <Label htmlFor="asset-serial">Serial number</Label>
+                  <Input
+                    id="asset-serial"
+                    value={serialNumber}
+                    onChange={(e) => setSerialNumber(e.target.value)}
+                    placeholder="Optional"
+                  />
+                </div>
+
+                <div className="grid gap-1">
+                  <Label htmlFor="asset-image">Image URL</Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      id="asset-image"
+                      value={imageUrl}
+                      onChange={(e) => {
+                        setImageUrl(e.target.value);
+                        setImgBroken(false);
+                      }}
+                      placeholder="https://..."
+                    />
+
+                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-border bg-muted/30">
+                      {showPreview ? (
+                        <img
+                          src={imageUrl.trim()}
+                          alt="Preview"
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                          onError={() => setImgBroken(true)}
+                        />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center text-[10px] text-muted-foreground">
+                          IMG
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {showInvalidUrlHint ? (
+                    <p className="text-xs text-muted-foreground">
+                      Enter a valid http(s) URL to show a preview.
+                    </p>
+                  ) : null}
+
+                  {imgBroken && isProbablyUrl(imageUrl) ? (
+                    <p className="text-xs text-destructive">
+                      Image couldn’t be loaded. Check the URL.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
             </div>
 
-            <div className="grid gap-1">
-              <Label htmlFor="asset-notes">Notes</Label>
-              <Textarea
-                id="asset-notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={8}
-                placeholder="Internal notes (optional)"
-              />
-            </div>
-          </div>
+            {/* Details */}
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-1">
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="asset-description">Description</Label>
 
-          {error ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3">
-              <p className="text-sm text-destructive">{error}</p>
-            </div>
-          ) : null}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={generateDescription}
+                    disabled={busy || name.trim().length === 0}
+                    className="h-8 px-2"
+                  >
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    {generating ? "Generating…" : "Generate"}
+                  </Button>
+                </div>
 
-          <DialogFooter className="gap-2 sm:justify-end">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setOpen(false)}
-              disabled={busy}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={!canSubmit}>
-              {saving ? "Saving…" : "Save"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+                <Textarea
+                  id="asset-description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={8}
+                  placeholder="Optional. You can generate this with AI, then edit."
+                />
+              </div>
+
+              <div className="grid gap-1">
+                <Label htmlFor="asset-notes">Notes</Label>
+                <Textarea
+                  id="asset-notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={8}
+                  placeholder="Internal notes (optional)"
+                />
+              </div>
+            </div>
+
+            {error ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3">
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            ) : null}
+
+            <DialogFooter className="gap-2 sm:justify-end">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setOpen(false)}
+                disabled={busy}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!canSubmit}>
+                {saving ? "Saving…" : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

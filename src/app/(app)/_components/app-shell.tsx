@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useEffect } from "react";
+import type { ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { SignOutButton, useUser } from "@clerk/nextjs";
 import {
@@ -35,23 +36,34 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const THEME_KEY = "sih-theme";
-
 type ThemeMode = "light" | "dark";
 
 function applyTheme(mode: ThemeMode) {
   document.documentElement.classList.toggle("dark", mode === "dark");
-  localStorage.setItem(THEME_KEY, mode);
+  try {
+    localStorage.setItem(THEME_KEY, mode);
+  } catch {
+    // ignore
+  }
 }
 
 function getInitialTheme(): ThemeMode {
+  // If a theme class was already applied (e.g., by an early script), honor it.
+  if (typeof document !== "undefined") {
+    if (document.documentElement.classList.contains("dark")) return "dark";
+  }
+
   try {
     const stored = localStorage.getItem(THEME_KEY);
     if (stored === "light" || stored === "dark") return stored;
-  } catch {}
+  } catch {
+    // ignore
+  }
+
   const prefersDark =
     typeof window !== "undefined" &&
-    window.matchMedia &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches;
+    window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
+
   return prefersDark ? "dark" : "light";
 }
 
@@ -72,7 +84,7 @@ function NavItem({
   onNavigate,
 }: {
   href: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   onNavigate?: () => void;
 }) {
@@ -98,7 +110,12 @@ function NavItem({
           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
       )}
     >
-      <span className="grid h-8 w-8 place-items-center rounded-md border border-border bg-background text-muted-foreground">
+      <span
+        className={cn(
+          "grid h-8 w-8 place-items-center rounded-md border border-border bg-background",
+          active ? "text-foreground" : "text-muted-foreground",
+        )}
+      >
         {icon}
       </span>
       <span className="font-medium">{label}</span>
@@ -106,7 +123,7 @@ function NavItem({
   );
 }
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user } = useUser();
 
@@ -117,6 +134,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const initial = getInitialTheme();
     setTheme(initial);
     applyTheme(initial);
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== THEME_KEY) return;
+      if (e.newValue !== "light" && e.newValue !== "dark") return;
+      setTheme(e.newValue);
+      applyTheme(e.newValue);
+    };
+
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   const pageTitle = useMemo(() => {
@@ -138,10 +165,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="flex min-h-screen">
+    <div className="min-h-[100dvh] bg-background text-foreground">
+      <div className="flex min-h-[100dvh]">
         {/* Sidebar (desktop) */}
-        <aside className="hidden w-64 shrink-0 border-r border-border bg-card md:flex md:flex-col">
+        <aside className="hidden w-64 shrink-0 border-r border-border bg-card md:flex md:flex-col md:sticky md:top-0 md:h-[100dvh]">
           <div className="flex h-14 items-center gap-2 border-b border-border px-4">
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
               <span className="text-sm font-semibold tracking-[-0.02em]">
@@ -158,7 +185,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <nav className="flex-1 space-y-1 p-2">
+          <nav className="flex-1 space-y-1 overflow-y-auto p-2">
             <NavItem
               href="/home"
               icon={<Home className="h-4 w-4" />}
@@ -202,9 +229,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Top bar */}
           <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-3 px-6">
+            <div className="flex h-14 w-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
               <div className="flex min-w-0 items-center gap-2">
-                {/* Mobile menu */}
+                {/* Mobile nav drawer */}
                 <Dialog open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
                   <DialogTrigger asChild>
                     <Button
@@ -212,15 +239,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       size="icon"
                       className="md:hidden"
                       aria-label="Open navigation"
+                      title="Navigation"
                     >
                       <Menu className="h-4 w-4" />
                     </Button>
                   </DialogTrigger>
 
-                  <DialogContent className="max-w-[340px] gap-0 p-0">
+                  {/* Drawer-style dialog (override centered defaults) */}
+                  <DialogContent
+                    className={cn(
+                      "left-0 top-0 h-[100dvh] w-[min(92vw,360px)] max-w-none",
+                      "translate-x-0 translate-y-0 rounded-r-2xl rounded-l-none",
+                      "p-0",
+                    )}
+                  >
                     <DialogHeader className="border-b border-border p-4">
                       <DialogTitle>Navigation</DialogTitle>
                     </DialogHeader>
+
                     <div className="p-2">
                       <NavItem
                         href="/home"
@@ -247,6 +283,22 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         onNavigate={() => setMobileNavOpen(false)}
                       />
                     </div>
+
+                    <div className="mt-auto border-t border-border p-3">
+                      <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2">
+                        <div className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-card text-xs font-semibold text-muted-foreground">
+                          {initials}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium">
+                            {accountName}
+                          </div>
+                          <div className="truncate text-xs text-muted-foreground">
+                            {accountEmail}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </DialogContent>
                 </Dialog>
 
@@ -261,7 +313,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
 
               <div className="flex items-center gap-2">
-                {/* Theme toggle */}
+                {/* Home shortcut (requested) */}
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  aria-label="Go to Home"
+                  title="Home"
+                >
+                  <Link href="/home">
+                    <Home className="h-4 w-4" />
+                  </Link>
+                </Button>
+
+                {/* Theme toggle (requested) */}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -285,6 +351,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       size="icon"
                       className="h-9 w-9"
                       aria-label="Account menu"
+                      title="Account"
                     >
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
@@ -327,10 +394,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          {/* Content */}
-          <main className="flex-1">
-            <div className="mx-auto w-full max-w-6xl px-6 py-6">{children}</div>
-          </main>
+          {/* Content (scroll container) */}
+          <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
         </div>
       </div>
     </div>
