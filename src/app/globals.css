@@ -40,110 +40,94 @@
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 6px);
+  --radius-xl: calc(var(--radius) + 4px);
 
   /* Fonts */
-  --font-sans:
-    "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, "Helvetica Neue", Arial, "Apple Color Emoji",
-    "Segoe UI Emoji";
-  --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  --font-sans: var(--font-dm-sans), "DM Sans", ui-sans-serif, system-ui,
+    -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial;
+  --font-heading: var(--font-syne), "Syne", ui-sans-serif, system-ui;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
 }
 
+/* ── Light mode — Quantum Pearl ───────────────────────────────────────── */
 :root {
-  /* Fluent-ish radius */
-  --radius: 12px;
+  --radius: 8px;
 
-  /* Fluent light */
-  --background: oklch(0.983 0.002 67.8);
-  /* #FAF9F8 */
-  --foreground: oklch(0.240 0.002 67.7);
-  /* #201F1E */
+  --background: oklch(0.974 0.006 264);   /* cool off-white */
+  --foreground: oklch(0.148 0.022 264);   /* deep navy-dark */
 
   --card: oklch(1 0 0);
-  /* #FFFFFF */
   --card-foreground: var(--foreground);
 
   --popover: oklch(1 0 0);
   --popover-foreground: var(--foreground);
 
-  --primary: oklch(0.526 0.149 251.6);
-  /* #0F6CBD */
-  --primary-foreground: oklch(1 0 0);
+  --primary: oklch(0.538 0.228 290);      /* vivid violet */
+  --primary-foreground: oklch(0.98 0 0);
 
-  --secondary: oklch(0.962 0.002 67.8);
-  /* #F3F2F1 */
+  --secondary: oklch(0.936 0.010 264);
   --secondary-foreground: var(--foreground);
 
-  --muted: oklch(0.962 0.002 67.8);
-  --muted-foreground: oklch(0.487 0.003 67.8);
-  /* #605E5C */
+  --muted: oklch(0.936 0.010 264);
+  --muted-foreground: oklch(0.510 0.014 264);
 
-  --accent: oklch(0.937 0.003 67.7);
-  /* #EDEBE9 */
-  --accent-foreground: var(--foreground);
+  --accent: oklch(0.930 0.018 290);
+  --accent-foreground: oklch(0.538 0.228 290);
 
-  --destructive: oklch(0.570 0.193 24.7);
-  /* #D13438 */
-  --destructive-foreground: oklch(1 0 0);
+  --destructive: oklch(0.558 0.212 25);
+  --destructive-foreground: oklch(0.98 0 0);
 
-  --border: oklch(0.937 0.003 67.7);
-  --input: oklch(0.937 0.003 67.7);
-  --ring: var(--primary);
+  --border: oklch(0.884 0.012 264);
+  --input: oklch(0.884 0.012 264);
+  --ring: oklch(0.538 0.228 290);
 
-  /* Subtle Fluent-ish shadows */
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.06);
-  --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.12);
+  --shadow-1: 0 1px 3px oklch(0.148 0.022 264 / 0.06),
+    0 6px 20px oklch(0.148 0.022 264 / 0.08);
+  --shadow-2: 0 12px 40px oklch(0.148 0.022 264 / 0.14);
+  --shadow-glow: 0 0 48px oklch(0.538 0.228 290 / 0.18);
 
   color-scheme: light;
 }
 
+/* ── Dark mode — Void Protocol ────────────────────────────────────────── */
 .dark {
-  /* Fluent dark */
-  --background: oklch(0.234 0.002 67.7);
-  /* #1B1A19 */
-  --foreground: oklch(0.985 0 0);
-  /* near white */
+  --background: oklch(0.088 0.018 264);   /* near-black navy */
+  --foreground: oklch(0.940 0.006 264);   /* cool near-white */
 
-  --card: oklch(0.261 0.002 67.6);
-  /* #252423 */
+  --card: oklch(0.126 0.020 264);
   --card-foreground: var(--foreground);
 
-  --popover: oklch(0.261 0.002 67.6);
+  --popover: oklch(0.150 0.022 264);
   --popover-foreground: var(--foreground);
 
-  --primary: oklch(0.680 0.152 246.2);
-  /* #479EF5 */
-  --primary-foreground: oklch(0.150 0 0);
+  --primary: oklch(0.668 0.228 290);      /* lighter violet on dark */
+  --primary-foreground: oklch(0.98 0 0);
 
-  --secondary: oklch(0.307 0.002 67.7);
-  /* #323130 */
+  --secondary: oklch(0.170 0.020 264);
   --secondary-foreground: var(--foreground);
 
-  --muted: oklch(0.307 0.002 67.7);
-  --muted-foreground: oklch(0.828 0.004 67.8);
-  /* #C8C6C4 */
+  --muted: oklch(0.170 0.020 264);
+  --muted-foreground: oklch(0.595 0.012 264);
 
-  --accent: oklch(0.349 0.002 67.7);
-  /* #3B3A39 */
-  --accent-foreground: var(--foreground);
+  --accent: oklch(0.195 0.032 290);
+  --accent-foreground: oklch(0.795 0.150 290);
 
-  --destructive: oklch(0.600 0.201 24.3);
-  /* slightly brighter red */
-  --destructive-foreground: oklch(1 0 0);
+  --destructive: oklch(0.622 0.218 25);
+  --destructive-foreground: oklch(0.98 0 0);
 
-  --border: oklch(0.349 0.002 67.7);
-  --input: oklch(0.349 0.002 67.7);
-  --ring: var(--primary);
+  --border: oklch(0.216 0.022 264);
+  --input: oklch(0.216 0.022 264);
+  --ring: oklch(0.668 0.228 290);
 
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.45);
-  --shadow-2: 0 14px 36px rgba(0, 0, 0, 0.55);
+  --shadow-1: 0 1px 4px rgba(0, 0, 0, 0.45), 0 8px 24px rgba(0, 0, 0, 0.50);
+  --shadow-2: 0 16px 48px rgba(0, 0, 0, 0.65);
+  --shadow-glow: 0 0 48px oklch(0.668 0.228 290 / 0.22);
 
   color-scheme: dark;
 }
 
+/* ── Base styles ──────────────────────────────────────────────────────── */
 @layer base {
   * {
     @apply border-border;
@@ -160,7 +144,7 @@
   }
 }
 
-/* AG Grid — align quartz with our tokens */
+/* ── AG Grid — align with tokens ─────────────────────────────────────── */
 .ag-theme-quartz {
   --ag-font-family: var(--font-sans);
   --ag-background-color: var(--card);
@@ -172,9 +156,58 @@
   --ag-header-height: 44;
 
   --ag-row-hover-color: color-mix(in oklch, var(--primary) 10%, var(--card));
-  --ag-selected-row-background-color: color-mix(in oklch, var(--primary) 14%, var(--card));
+  --ag-selected-row-background-color: color-mix(
+    in oklch,
+    var(--primary) 14%,
+    var(--card)
+  );
   --ag-range-selection-border-color: var(--primary);
 
   --ag-control-panel-background-color: var(--card);
-  --ag-odd-row-background-color: color-mix(in oklch, var(--muted) 40%, var(--card));
+  --ag-odd-row-background-color: color-mix(
+    in oklch,
+    var(--muted) 40%,
+    var(--card)
+  );
+}
+
+/* ── Landing page animations ─────────────────────────────────────────── */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.animate-fade-up-1 { animation-delay: 0.08s; }
+.animate-fade-up-2 { animation-delay: 0.18s; }
+.animate-fade-up-3 { animation-delay: 0.28s; }
+.animate-fade-up-4 { animation-delay: 0.38s; }
+.animate-fade-up-5 { animation-delay: 0.48s; }
+
+/* ── Stat card shimmer ───────────────────────────────────────────────── */
+@keyframes shimmer-move {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+.stat-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    oklch(0.668 0.228 290 / 0.08) 50%,
+    transparent 100%
+  );
+  animation: shimmer-move 3s ease-in-out infinite;
+  pointer-events: none;
 }

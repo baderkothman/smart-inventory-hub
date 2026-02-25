@@ -2,7 +2,22 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { shadcn } from "@clerk/themes";
+import { Syne, DM_Sans } from "next/font/google";
 import "./globals.css";
+
+const syne = Syne({
+  subsets: ["latin"],
+  variable: "--font-syne",
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+  weight: ["300", "400", "500", "600"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Smart Inventory Hub",
@@ -37,7 +52,11 @@ export default function RootLayout({
         theme: shadcn,
       }}
     >
-      <html lang="en" suppressHydrationWarning>
+      <html
+        lang="en"
+        className={`${syne.variable} ${dmSans.variable}`}
+        suppressHydrationWarning
+      >
         <head>
           <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         </head>

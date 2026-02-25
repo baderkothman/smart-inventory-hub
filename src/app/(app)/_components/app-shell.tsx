@@ -14,7 +14,7 @@ import {
   Menu,
   Moon,
   Sun,
-  MoreHorizontal,
+  ChevronDown,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -48,22 +48,18 @@ function applyTheme(mode: ThemeMode) {
 }
 
 function getInitialTheme(): ThemeMode {
-  // If a theme class was already applied (e.g., by an early script), honor it.
   if (typeof document !== "undefined") {
     if (document.documentElement.classList.contains("dark")) return "dark";
   }
-
   try {
     const stored = localStorage.getItem(THEME_KEY);
     if (stored === "light" || stored === "dark") return stored;
   } catch {
     // ignore
   }
-
   const prefersDark =
     typeof window !== "undefined" &&
     window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
-
   return prefersDark ? "dark" : "light";
 }
 
@@ -76,6 +72,8 @@ function initialsFromName(name: string) {
   const b = parts[1]?.[0] ?? "";
   return (a + b).toUpperCase();
 }
+
+/* ── Nav item (dark sidebar variant) ──────────────────────────────────── */
 
 function NavItem({
   href,
@@ -99,29 +97,62 @@ function NavItem({
     <Link
       href={href}
       onClick={onNavigate}
-      className={cn(
-        [
-          "flex items-center gap-2 rounded-md px-3 py-2 text-sm",
-          "transition-colors",
-          "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/20",
-        ].join(" "),
-        active
-          ? "bg-accent text-accent-foreground"
-          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-      )}
+      className="relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors duration-150 focus-visible:outline-none"
+      style={{
+        color: active ? "#C4B5FD" : "rgba(148,163,184,0.70)",
+        backgroundColor: active ? "rgba(124,58,237,0.10)" : "transparent",
+        fontWeight: active ? 500 : 400,
+      }}
+      onMouseEnter={(e) => {
+        if (!active) {
+          (e.currentTarget as HTMLElement).style.backgroundColor =
+            "rgba(255,255,255,0.04)";
+          (e.currentTarget as HTMLElement).style.color =
+            "rgba(226,232,240,0.90)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!active) {
+          (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+          (e.currentTarget as HTMLElement).style.color =
+            "rgba(148,163,184,0.70)";
+        }
+      }}
     >
+      {/* Active left pill */}
+      {active && (
+        <span
+          className="absolute left-0 top-1/2 -translate-y-1/2 rounded-full"
+          style={{
+            width: "3px",
+            height: "18px",
+            backgroundColor: "#A78BFA",
+            boxShadow: "0 0 8px #A78BFA",
+          }}
+        />
+      )}
+
+      {/* Icon */}
       <span
-        className={cn(
-          "grid h-8 w-8 place-items-center rounded-md border border-border bg-background",
-          active ? "text-foreground" : "text-muted-foreground",
-        )}
+        style={{
+          display: "grid",
+          placeItems: "center",
+          width: "28px",
+          height: "28px",
+          borderRadius: "6px",
+          color: active ? "#A78BFA" : "rgba(100,116,139,0.90)",
+          flexShrink: 0,
+        }}
       >
         {icon}
       </span>
-      <span className="font-medium">{label}</span>
+
+      <span style={{ letterSpacing: "-0.005em" }}>{label}</span>
     </Link>
   );
 }
+
+/* ── Shell ─────────────────────────────────────────────────────────────── */
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -138,8 +169,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
     const onStorage = (e: StorageEvent) => {
       if (e.key !== THEME_KEY) return;
       if (e.newValue !== "light" && e.newValue !== "dark") return;
-      setTheme(e.newValue);
-      applyTheme(e.newValue);
+      setTheme(e.newValue as ThemeMode);
+      applyTheme(e.newValue as ThemeMode);
     };
 
     window.addEventListener("storage", onStorage);
@@ -164,74 +195,202 @@ export default function AppShell({ children }: { children: ReactNode }) {
     applyTheme(next);
   };
 
+  /* Sidebar inner content (shared desktop + mobile) */
+  const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
+    <>
+      <nav style={{ flex: 1, padding: "12px", overflowY: "auto" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+          <NavItem
+            href="/home"
+            icon={<Home style={{ width: "15px", height: "15px" }} />}
+            label="Home"
+            onNavigate={onNavigate}
+          />
+          <NavItem
+            href="/dashboard"
+            icon={<LayoutGrid style={{ width: "15px", height: "15px" }} />}
+            label="Dashboard"
+            onNavigate={onNavigate}
+          />
+          <NavItem
+            href="/profile"
+            icon={<User style={{ width: "15px", height: "15px" }} />}
+            label="Profile"
+            onNavigate={onNavigate}
+          />
+          <NavItem
+            href="/settings"
+            icon={<Settings style={{ width: "15px", height: "15px" }} />}
+            label="Settings"
+            onNavigate={onNavigate}
+          />
+        </div>
+      </nav>
+
+      {/* User card */}
+      <div
+        style={{
+          borderTop: "1px solid rgba(255,255,255,0.05)",
+          padding: "12px",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            padding: "10px 12px",
+            borderRadius: "8px",
+            border: "1px solid rgba(255,255,255,0.07)",
+            backgroundColor: "rgba(255,255,255,0.03)",
+          }}
+        >
+          {/* Avatar */}
+          <div
+            style={{
+              display: "grid",
+              placeItems: "center",
+              width: "32px",
+              height: "32px",
+              borderRadius: "7px",
+              background: "linear-gradient(135deg, rgba(124,58,237,0.50), rgba(167,139,250,0.50))",
+              border: "1px solid rgba(124,58,237,0.35)",
+              fontSize: "11px",
+              fontWeight: 700,
+              color: "#C4B5FD",
+              flexShrink: 0,
+            }}
+          >
+            {initials}
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: "13px",
+                fontWeight: 500,
+                color: "rgba(226,232,240,0.90)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {accountName}
+            </div>
+            <div
+              style={{
+                fontSize: "11px",
+                color: "rgba(100,116,139,0.80)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {accountEmail}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
       <div className="flex min-h-[100dvh]">
-        {/* Sidebar (desktop) */}
-        <aside className="hidden w-64 shrink-0 border-r border-border bg-card md:flex md:flex-col md:sticky md:top-0 md:h-[100dvh]">
-          <div className="flex h-14 items-center gap-2 border-b border-border px-4">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-              <span className="text-sm font-semibold tracking-[-0.02em]">
+
+        {/* ── Desktop sidebar (always dark) ─────────────────────────── */}
+        <aside
+          className="hidden md:flex md:flex-col md:sticky md:top-0 md:h-[100dvh]"
+          style={{
+            width: "232px",
+            flexShrink: 0,
+            backgroundColor: "#060810",
+            borderRight: "1px solid rgba(255,255,255,0.05)",
+          }}
+        >
+          {/* Logo area */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              height: "56px",
+              padding: "0 16px",
+              borderBottom: "1px solid rgba(255,255,255,0.05)",
+              flexShrink: 0,
+            }}
+          >
+            {/* Logo mark */}
+            <div
+              style={{
+                display: "grid",
+                placeItems: "center",
+                width: "30px",
+                height: "30px",
+                borderRadius: "7px",
+                background: "linear-gradient(135deg, #7C3AED, #A78BFA)",
+                boxShadow: "0 0 14px rgba(124,58,237,0.40)",
+                flexShrink: 0,
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "var(--font-syne), Syne, ui-sans-serif",
+                  fontWeight: 700,
+                  fontSize: "11px",
+                  color: "white",
+                  letterSpacing: "-0.01em",
+                }}
+              >
                 SI
               </span>
             </div>
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold tracking-[-0.01em]">
-                Smart Inventory Hub
+            <div style={{ minWidth: 0 }}>
+              <div
+                style={{
+                  fontFamily: "var(--font-syne), Syne, ui-sans-serif",
+                  fontWeight: 600,
+                  fontSize: "13px",
+                  color: "rgba(240,240,255,0.92)",
+                  letterSpacing: "-0.02em",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                Smart Inventory
               </div>
-              <div className="truncate text-xs text-muted-foreground">
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: "rgba(100,116,139,0.70)",
+                  letterSpacing: "0.01em",
+                }}
+              >
                 {pageTitle}
               </div>
             </div>
           </div>
 
-          <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-            <NavItem
-              href="/home"
-              icon={<Home className="h-4 w-4" />}
-              label="Home"
-            />
-            <NavItem
-              href="/dashboard"
-              icon={<LayoutGrid className="h-4 w-4" />}
-              label="Dashboard"
-            />
-            <NavItem
-              href="/profile"
-              icon={<User className="h-4 w-4" />}
-              label="Profile"
-            />
-            <NavItem
-              href="/settings"
-              icon={<Settings className="h-4 w-4" />}
-              label="Settings"
-            />
-          </nav>
-
-          <div className="border-t border-border p-3">
-            <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2">
-              <div className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-card text-xs font-semibold text-muted-foreground">
-                {initials}
-              </div>
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium">
-                  {accountName}
-                </div>
-                <div className="truncate text-xs text-muted-foreground">
-                  {accountEmail}
-                </div>
-              </div>
-            </div>
-          </div>
+          <SidebarContent />
         </aside>
 
-        {/* Main */}
+        {/* ── Main content column ────────────────────────────────────── */}
         <div className="flex min-w-0 flex-1 flex-col">
+
           {/* Top bar */}
-          <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex h-14 w-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+          <header
+            className="sticky top-0 z-40 border-b border-border backdrop-blur"
+            style={{
+              backgroundColor: "color-mix(in oklch, var(--background) 85%, transparent)",
+            }}
+          >
+            <div
+              className="flex w-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-8"
+              style={{ height: "56px" }}
+            >
+              {/* Left: mobile menu + breadcrumb */}
               <div className="flex min-w-0 items-center gap-2">
-                {/* Mobile nav drawer */}
+                {/* Mobile nav trigger */}
                 <Dialog open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
                   <DialogTrigger asChild>
                     <Button
@@ -239,99 +398,71 @@ export default function AppShell({ children }: { children: ReactNode }) {
                       size="icon"
                       className="md:hidden"
                       aria-label="Open navigation"
-                      title="Navigation"
                     >
                       <Menu className="h-4 w-4" />
                     </Button>
                   </DialogTrigger>
 
-                  {/* Drawer-style dialog (override centered defaults) */}
+                  {/* Mobile drawer */}
                   <DialogContent
                     className={cn(
-                      "left-0 top-0 h-[100dvh] w-[min(92vw,360px)] max-w-none",
+                      "left-0 top-0 h-[100dvh] w-[min(88vw,280px)] max-w-none",
                       "translate-x-0 translate-y-0 rounded-r-2xl rounded-l-none",
                       "p-0",
                     )}
+                    style={{
+                      backgroundColor: "#060810",
+                      border: "none",
+                      borderRight: "1px solid rgba(255,255,255,0.05)",
+                    }}
                   >
-                    <DialogHeader className="border-b border-border p-4">
-                      <DialogTitle>Navigation</DialogTitle>
+                    <DialogHeader
+                      className="px-4 py-3"
+                      style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+                    >
+                      <DialogTitle
+                        style={{
+                          fontFamily: "var(--font-syne), Syne, ui-sans-serif",
+                          color: "rgba(240,240,255,0.90)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        Navigation
+                      </DialogTitle>
                     </DialogHeader>
 
-                    <div className="p-2">
-                      <NavItem
-                        href="/home"
-                        icon={<Home className="h-4 w-4" />}
-                        label="Home"
-                        onNavigate={() => setMobileNavOpen(false)}
-                      />
-                      <NavItem
-                        href="/dashboard"
-                        icon={<LayoutGrid className="h-4 w-4" />}
-                        label="Dashboard"
-                        onNavigate={() => setMobileNavOpen(false)}
-                      />
-                      <NavItem
-                        href="/profile"
-                        icon={<User className="h-4 w-4" />}
-                        label="Profile"
-                        onNavigate={() => setMobileNavOpen(false)}
-                      />
-                      <NavItem
-                        href="/settings"
-                        icon={<Settings className="h-4 w-4" />}
-                        label="Settings"
-                        onNavigate={() => setMobileNavOpen(false)}
-                      />
-                    </div>
-
-                    <div className="mt-auto border-t border-border p-3">
-                      <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2">
-                        <div className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-card text-xs font-semibold text-muted-foreground">
-                          {initials}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-medium">
-                            {accountName}
-                          </div>
-                          <div className="truncate text-xs text-muted-foreground">
-                            {accountEmail}
-                          </div>
-                        </div>
-                      </div>
+                    <div style={{ display: "flex", flexDirection: "column", height: "calc(100% - 48px)" }}>
+                      <SidebarContent onNavigate={() => setMobileNavOpen(false)} />
                     </div>
                   </DialogContent>
                 </Dialog>
 
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold tracking-[-0.01em]">
+                {/* Breadcrumb */}
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontFamily: "var(--font-syne), Syne, ui-sans-serif",
+                      fontWeight: 600,
+                      fontSize: "14px",
+                      letterSpacing: "-0.02em",
+                      color: "var(--foreground)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
                     {pageTitle}
-                  </div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    Smart Inventory Hub
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                {/* Home shortcut (requested) */}
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9"
-                  aria-label="Go to Home"
-                  title="Home"
-                >
-                  <Link href="/home">
-                    <Home className="h-4 w-4" />
-                  </Link>
-                </Button>
-
-                {/* Theme toggle (requested) */}
+              {/* Right: actions */}
+              <div className="flex items-center gap-1.5">
+                {/* Theme toggle */}
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9"
+                  className="h-8 w-8"
                   onClick={toggleTheme}
                   aria-label="Toggle theme"
                   title="Toggle theme"
@@ -343,22 +474,58 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   )}
                 </Button>
 
-                {/* Account menu */}
+                {/* Account dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-9 w-9"
+                    <button
+                      className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                       aria-label="Account menu"
-                      title="Account"
                     >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
+                      {/* Mini avatar */}
+                      <div
+                        style={{
+                          display: "grid",
+                          placeItems: "center",
+                          width: "26px",
+                          height: "26px",
+                          borderRadius: "6px",
+                          background: "linear-gradient(135deg, var(--primary), color-mix(in oklch, var(--primary) 70%, white))",
+                          fontSize: "10px",
+                          fontWeight: 700,
+                          color: "var(--primary-foreground)",
+                        }}
+                      >
+                        {initials}
+                      </div>
+                      <span
+                        className="hidden sm:block"
+                        style={{
+                          maxWidth: "120px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          fontSize: "13px",
+                          fontWeight: 500,
+                          color: "var(--foreground)",
+                        }}
+                      >
+                        {accountName}
+                      </span>
+                      <ChevronDown
+                        style={{
+                          width: "13px",
+                          height: "13px",
+                          color: "var(--muted-foreground)",
+                        }}
+                      />
+                    </button>
                   </DropdownMenuTrigger>
 
                   <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel className="truncate">
+                    <DropdownMenuLabel
+                      style={{ fontSize: "13px" }}
+                      className="truncate"
+                    >
                       {accountName}
                     </DropdownMenuLabel>
                     <div className="px-2 pb-2 text-xs text-muted-foreground truncate">
@@ -394,8 +561,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </div>
           </header>
 
-          {/* Content (scroll container) */}
-          <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
+          {/* Page content */}
+          <main className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
+            {children}
+          </main>
         </div>
       </div>
     </div>
