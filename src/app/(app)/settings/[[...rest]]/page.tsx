@@ -1,5 +1,6 @@
 // src/app/(app)/settings/[[...rest]]/page.tsx
 import { UserProfile } from "@clerk/nextjs";
+import { ThemeToggle } from "../../_components/theme-toggle";
 
 export default async function SettingsCatchAllPage() {
   return (
@@ -10,6 +11,8 @@ export default async function SettingsCatchAllPage() {
           Manage your account, security, and active sessions.
         </p>
       </div>
+
+      <ThemeToggle />
 
       <div className="rounded-2xl border border-border bg-card shadow-[var(--shadow-1)]">
         <div className="p-3 sm:p-5">

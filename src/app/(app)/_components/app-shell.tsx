@@ -12,9 +12,6 @@ import {
   Settings,
   LogOut,
   Menu,
-  Moon,
-  Sun,
-  ChevronDown,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -26,14 +23,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 const THEME_KEY = "sih-theme";
 type ThemeMode = "light" | "dark";
@@ -158,18 +147,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user } = useUser();
 
-  const [theme, setTheme] = useState<ThemeMode>("light");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
+  // Sync theme on mount and across tabs — toggle lives in Settings
   useEffect(() => {
-    const initial = getInitialTheme();
-    setTheme(initial);
-    applyTheme(initial);
+    applyTheme(getInitialTheme());
 
     const onStorage = (e: StorageEvent) => {
       if (e.key !== THEME_KEY) return;
       if (e.newValue !== "light" && e.newValue !== "dark") return;
-      setTheme(e.newValue as ThemeMode);
       applyTheme(e.newValue as ThemeMode);
     };
 
@@ -188,12 +174,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
     user?.firstName ?? user?.fullName ?? user?.username ?? "User";
   const accountEmail = user?.primaryEmailAddress?.emailAddress ?? "—";
   const initials = initialsFromName(accountName);
-
-  const toggleTheme = () => {
-    const next: ThemeMode = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    applyTheme(next);
-  };
 
   /* Sidebar inner content (shared desktop + mobile) */
   const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
@@ -227,13 +207,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </div>
       </nav>
 
-      {/* User card */}
+      {/* ── User card + account actions ─────────────────────────────── */}
       <div
         style={{
           borderTop: "1px solid rgba(255,255,255,0.05)",
           padding: "12px",
         }}
       >
+        {/* User info */}
         <div
           style={{
             display: "flex",
@@ -243,6 +224,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             borderRadius: "8px",
             border: "1px solid rgba(255,255,255,0.07)",
             backgroundColor: "rgba(255,255,255,0.03)",
+            marginBottom: "6px",
           }}
         >
           {/* Avatar */}
@@ -253,7 +235,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
               width: "32px",
               height: "32px",
               borderRadius: "7px",
-              background: "linear-gradient(135deg, rgba(124,58,237,0.50), rgba(167,139,250,0.50))",
+              background:
+                "linear-gradient(135deg, rgba(124,58,237,0.50), rgba(167,139,250,0.50))",
               border: "1px solid rgba(124,58,237,0.35)",
               fontSize: "11px",
               fontWeight: 700,
@@ -288,6 +271,116 @@ export default function AppShell({ children }: { children: ReactNode }) {
               {accountEmail}
             </div>
           </div>
+        </div>
+
+        {/* Account action links */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+          <Link
+            href="/profile"
+            onClick={onNavigate}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "9px",
+              padding: "7px 10px",
+              borderRadius: "6px",
+              fontSize: "12px",
+              color: "rgba(148,163,184,0.70)",
+              textDecoration: "none",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor =
+                "rgba(255,255,255,0.04)";
+              (e.currentTarget as HTMLElement).style.color =
+                "rgba(226,232,240,0.90)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor =
+                "transparent";
+              (e.currentTarget as HTMLElement).style.color =
+                "rgba(148,163,184,0.70)";
+            }}
+          >
+            <User style={{ width: "13px", height: "13px", flexShrink: 0 }} />
+            Profile
+          </Link>
+
+          <Link
+            href="/settings"
+            onClick={onNavigate}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "9px",
+              padding: "7px 10px",
+              borderRadius: "6px",
+              fontSize: "12px",
+              color: "rgba(148,163,184,0.70)",
+              textDecoration: "none",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor =
+                "rgba(255,255,255,0.04)";
+              (e.currentTarget as HTMLElement).style.color =
+                "rgba(226,232,240,0.90)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor =
+                "transparent";
+              (e.currentTarget as HTMLElement).style.color =
+                "rgba(148,163,184,0.70)";
+            }}
+          >
+            <Settings
+              style={{ width: "13px", height: "13px", flexShrink: 0 }}
+            />
+            Settings
+          </Link>
+
+          <div
+            style={{
+              height: "1px",
+              backgroundColor: "rgba(255,255,255,0.05)",
+              margin: "3px 0",
+            }}
+          />
+
+          <SignOutButton redirectUrl="/">
+            <button
+              type="button"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "9px",
+                width: "100%",
+                padding: "7px 10px",
+                borderRadius: "6px",
+                fontSize: "12px",
+                color: "rgba(239,68,68,0.65)",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.backgroundColor =
+                  "rgba(239,68,68,0.08)";
+                (e.currentTarget as HTMLElement).style.color =
+                  "rgba(239,68,68,0.90)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.backgroundColor =
+                  "transparent";
+                (e.currentTarget as HTMLElement).style.color =
+                  "rgba(239,68,68,0.65)";
+              }}
+            >
+              <LogOut
+                style={{ width: "13px", height: "13px", flexShrink: 0 }}
+              />
+              Sign out
+            </button>
+          </SignOutButton>
         </div>
       </div>
     </>
@@ -385,178 +478,78 @@ export default function AppShell({ children }: { children: ReactNode }) {
             }}
           >
             <div
-              className="flex w-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-8"
+              className="flex w-full items-center gap-3 px-4 sm:px-6 lg:px-8"
               style={{ height: "56px" }}
             >
-              {/* Left: mobile menu + breadcrumb */}
-              <div className="flex min-w-0 items-center gap-2">
-                {/* Mobile nav trigger */}
-                <Dialog open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-                  <DialogTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="md:hidden"
-                      aria-label="Open navigation"
-                    >
-                      <Menu className="h-4 w-4" />
-                    </Button>
-                  </DialogTrigger>
-
-                  {/* Mobile drawer */}
-                  <DialogContent
-                    className={cn(
-                      "left-0 top-0 h-[100dvh] w-[min(88vw,280px)] max-w-none",
-                      "translate-x-0 translate-y-0 rounded-r-2xl rounded-l-none",
-                      "p-0",
-                    )}
-                    style={{
-                      backgroundColor: "#060810",
-                      border: "none",
-                      borderRight: "1px solid rgba(255,255,255,0.05)",
-                    }}
+              {/* Mobile nav trigger */}
+              <Dialog open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="md:hidden"
+                    aria-label="Open navigation"
                   >
-                    <DialogHeader
-                      className="px-4 py-3"
-                      style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+
+                {/* Mobile drawer */}
+                <DialogContent
+                  className={cn(
+                    "left-0 top-0 h-[100dvh] w-[min(88vw,280px)] max-w-none",
+                    "translate-x-0 translate-y-0 rounded-r-2xl rounded-l-none",
+                    "p-0",
+                  )}
+                  style={{
+                    backgroundColor: "#060810",
+                    border: "none",
+                    borderRight: "1px solid rgba(255,255,255,0.05)",
+                  }}
+                >
+                  <DialogHeader
+                    className="px-4 py-3"
+                    style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+                  >
+                    <DialogTitle
+                      style={{
+                        fontFamily: "var(--font-syne), Syne, ui-sans-serif",
+                        color: "rgba(240,240,255,0.90)",
+                        fontSize: "14px",
+                      }}
                     >
-                      <DialogTitle
-                        style={{
-                          fontFamily: "var(--font-syne), Syne, ui-sans-serif",
-                          color: "rgba(240,240,255,0.90)",
-                          fontSize: "14px",
-                        }}
-                      >
-                        Navigation
-                      </DialogTitle>
-                    </DialogHeader>
+                      Navigation
+                    </DialogTitle>
+                  </DialogHeader>
 
-                    <div style={{ display: "flex", flexDirection: "column", height: "calc(100% - 48px)" }}>
-                      <SidebarContent onNavigate={() => setMobileNavOpen(false)} />
-                    </div>
-                  </DialogContent>
-                </Dialog>
-
-                {/* Breadcrumb */}
-                <div style={{ minWidth: 0 }}>
                   <div
                     style={{
-                      fontFamily: "var(--font-syne), Syne, ui-sans-serif",
-                      fontWeight: 600,
-                      fontSize: "14px",
-                      letterSpacing: "-0.02em",
-                      color: "var(--foreground)",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
+                      display: "flex",
+                      flexDirection: "column",
+                      height: "calc(100% - 48px)",
                     }}
                   >
-                    {pageTitle}
+                    <SidebarContent onNavigate={() => setMobileNavOpen(false)} />
                   </div>
-                </div>
-              </div>
+                </DialogContent>
+              </Dialog>
 
-              {/* Right: actions */}
-              <div className="flex items-center gap-1.5">
-                {/* Theme toggle */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={toggleTheme}
-                  aria-label="Toggle theme"
-                  title="Toggle theme"
+              {/* Page title breadcrumb */}
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontFamily: "var(--font-syne), Syne, ui-sans-serif",
+                    fontWeight: 600,
+                    fontSize: "14px",
+                    letterSpacing: "-0.02em",
+                    color: "var(--foreground)",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
                 >
-                  {theme === "dark" ? (
-                    <Sun className="h-4 w-4" />
-                  ) : (
-                    <Moon className="h-4 w-4" />
-                  )}
-                </Button>
-
-                {/* Account dropdown */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                      aria-label="Account menu"
-                    >
-                      {/* Mini avatar */}
-                      <div
-                        style={{
-                          display: "grid",
-                          placeItems: "center",
-                          width: "26px",
-                          height: "26px",
-                          borderRadius: "6px",
-                          background: "linear-gradient(135deg, var(--primary), color-mix(in oklch, var(--primary) 70%, white))",
-                          fontSize: "10px",
-                          fontWeight: 700,
-                          color: "var(--primary-foreground)",
-                        }}
-                      >
-                        {initials}
-                      </div>
-                      <span
-                        className="hidden sm:block"
-                        style={{
-                          maxWidth: "120px",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          fontSize: "13px",
-                          fontWeight: 500,
-                          color: "var(--foreground)",
-                        }}
-                      >
-                        {accountName}
-                      </span>
-                      <ChevronDown
-                        style={{
-                          width: "13px",
-                          height: "13px",
-                          color: "var(--muted-foreground)",
-                        }}
-                      />
-                    </button>
-                  </DropdownMenuTrigger>
-
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel
-                      style={{ fontSize: "13px" }}
-                      className="truncate"
-                    >
-                      {accountName}
-                    </DropdownMenuLabel>
-                    <div className="px-2 pb-2 text-xs text-muted-foreground truncate">
-                      {accountEmail}
-                    </div>
-                    <DropdownMenuSeparator />
-
-                    <DropdownMenuItem asChild>
-                      <Link href="/profile" className="flex items-center">
-                        <User className="mr-2 h-4 w-4" />
-                        Profile
-                      </Link>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem asChild>
-                      <Link href="/settings" className="flex items-center">
-                        <Settings className="mr-2 h-4 w-4" />
-                        Settings
-                      </Link>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuSeparator />
-
-                    <SignOutButton redirectUrl="/">
-                      <DropdownMenuItem className="text-destructive focus:text-destructive">
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Sign out
-                      </DropdownMenuItem>
-                    </SignOutButton>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                  {pageTitle}
+                </div>
               </div>
             </div>
           </header>
