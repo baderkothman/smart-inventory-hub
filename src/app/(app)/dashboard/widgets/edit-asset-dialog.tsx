@@ -6,12 +6,11 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -20,12 +19,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 type AssetType = "LAPTOP" | "MONITOR" | "LICENSE" | "OTHER";
 type AssetStatus = "IN_STOCK" | "ASSIGNED" | "RETIRED";
 
 type AssetRow = {
   id: string;
+  inventoryId: string;
   type: AssetType;
   name: string;
   brand: string | null;
@@ -33,6 +34,7 @@ type AssetRow = {
   serialNumber: string | null;
   imageUrl: string | null;
   status: AssetStatus;
+  quantity: number;
   description: string | null;
   notes: string | null;
   createdAt: string;
@@ -102,6 +104,7 @@ export default function EditAssetDialog({
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
+  const [quantity, setQuantity] = useState("0");
 
   const [imageUrl, setImageUrl] = useState("");
   const [notes, setNotes] = useState("");
@@ -140,6 +143,7 @@ export default function EditAssetDialog({
     setBrand(asset.brand ?? "");
     setModel(asset.model ?? "");
     setSerialNumber(asset.serialNumber ?? "");
+    setQuantity(String(asset.quantity ?? 0));
 
     setImageUrl(asset.imageUrl ?? "");
     setNotes(asset.notes ?? "");
@@ -167,6 +171,7 @@ export default function EditAssetDialog({
           model: model.trim() || null,
           serialNumber: serialNumber.trim() || null,
           imageUrl: imageUrl.trim() || null,
+          quantity: Math.max(0, Math.floor(Number(quantity) || 0)),
           notes: notes.trim() || null,
           description: description.trim() || null,
         }),
@@ -229,7 +234,7 @@ export default function EditAssetDialog({
               </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-4">
               <div className="grid gap-1">
                 <Label>Status</Label>
                 <Select
@@ -266,6 +271,18 @@ export default function EditAssetDialog({
                   placeholder="Optional"
                 />
               </div>
+
+              <div className="grid gap-1">
+                <Label htmlFor="edit-qty">Qty</Label>
+                <Input
+                  id="edit-qty"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                />
+              </div>
             </div>
 
             <div className="grid gap-3 md:grid-cols-3">
@@ -290,7 +307,6 @@ export default function EditAssetDialog({
                     placeholder="https://..."
                   />
 
-                  {/* Small, quiet preview (no extra card) */}
                   <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-border bg-muted/30">
                     {showPreview ? (
                       <img
@@ -317,7 +333,7 @@ export default function EditAssetDialog({
 
                 {imgBroken && isProbablyUrl(imageUrl) ? (
                   <p className="text-xs text-destructive">
-                    Image couldn’t be loaded. Check the URL.
+                    Image couldn't be loaded. Check the URL.
                   </p>
                 ) : null}
               </div>

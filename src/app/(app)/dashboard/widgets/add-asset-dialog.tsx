@@ -1,19 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -22,12 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 type AssetType = "LAPTOP" | "MONITOR" | "LICENSE" | "OTHER";
 type AssetStatus = "IN_STOCK" | "ASSIGNED" | "RETIRED";
 
 type CreatedAsset = {
   id: string;
+  inventoryId: string;
   type: AssetType;
   name: string;
   brand: string | null;
@@ -35,6 +36,7 @@ type CreatedAsset = {
   serialNumber: string | null;
   imageUrl: string | null;
   status: AssetStatus;
+  quantity: number;
   description: string | null;
   notes: string | null;
   createdAt: string;
@@ -91,8 +93,10 @@ function isProbablyUrl(value: string) {
 }
 
 export default function AddAssetDialog({
+  inventoryId,
   onCreated,
 }: {
+  inventoryId: string;
   onCreated: (row: CreatedAsset) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -111,6 +115,7 @@ export default function AddAssetDialog({
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
+  const [quantity, setQuantity] = useState("1");
 
   const [imageUrl, setImageUrl] = useState("");
   const [notes, setNotes] = useState("");
@@ -138,6 +143,7 @@ export default function AddAssetDialog({
     setBrand("");
     setModel("");
     setSerialNumber("");
+    setQuantity("1");
     setImageUrl("");
     setNotes("");
     setDescription("");
@@ -147,7 +153,6 @@ export default function AddAssetDialog({
     setGenerating(false);
   }
 
-  // Reset when closing
   useEffect(() => {
     if (!open) resetForm();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -196,10 +201,13 @@ export default function AddAssetDialog({
     setError(null);
 
     try {
+      const qty = Math.max(0, Math.floor(Number(quantity) || 0));
+
       const created = await fetchJson<CreatedAsset>("/api/assets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          inventoryId,
           type,
           status,
           name: name.trim(),
@@ -207,6 +215,7 @@ export default function AddAssetDialog({
           model: model.trim() || null,
           serialNumber: serialNumber.trim() || null,
           imageUrl: imageUrl.trim() || null,
+          quantity: qty,
           notes: notes.trim() || null,
           description: description.trim() || null,
         }),
@@ -226,7 +235,6 @@ export default function AddAssetDialog({
 
   return (
     <>
-      {/* ✅ Normal button (no Radix Trigger) to avoid hydration mismatch */}
       <Button type="button" onClick={() => setOpen(true)}>
         Add asset
       </Button>
@@ -283,7 +291,7 @@ export default function AddAssetDialog({
                 </div>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-3 md:grid-cols-4">
                 <div className="grid gap-1">
                   <Label>Status</Label>
                   <Select
@@ -320,6 +328,21 @@ export default function AddAssetDialog({
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
                     placeholder="Optional"
+                  />
+                </div>
+
+                <div className="grid gap-1">
+                  <Label htmlFor="asset-qty">
+                    Qty <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="asset-qty"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    placeholder="1"
                   />
                 </div>
               </div>
@@ -374,7 +397,7 @@ export default function AddAssetDialog({
 
                   {imgBroken && isProbablyUrl(imageUrl) ? (
                     <p className="text-xs text-destructive">
-                      Image couldn’t be loaded. Check the URL.
+                      Image couldn't be loaded. Check the URL.
                     </p>
                   ) : null}
                 </div>

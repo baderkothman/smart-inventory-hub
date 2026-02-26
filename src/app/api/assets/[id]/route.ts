@@ -1,7 +1,8 @@
 // src/app/api/assets/[id]/route.ts
-import { NextResponse } from "next/server";
+
 import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
 
 import { db } from "@/db";
 import { assets } from "@/db/schema";
@@ -78,6 +79,10 @@ export async function PATCH(
       typeof body.description === "string"
         ? body.description.trim()
         : body.description,
+    quantity:
+      typeof body.quantity === "number"
+        ? Math.max(0, Math.floor(body.quantity))
+        : undefined,
     updatedAt: new Date(),
   };
 

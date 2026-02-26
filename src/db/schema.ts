@@ -1,12 +1,33 @@
 import {
+  boolean,
   date,
   index,
+  integer,
   pgEnum,
   pgTable,
   text,
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
+
+export const inventories = pgTable(
+  "inventories",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("created_by_user_id").notNull(),
+    name: text("name").notNull(),
+    isDefault: boolean("is_default").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    userIdIdx: index("inventories_user_id_idx").on(t.userId),
+  }),
+);
 
 export const assetType = pgEnum("asset_type", [
   "LAPTOP",
@@ -28,8 +49,11 @@ export const assets = pgTable(
 
     // Authorization scope (required)
     createdByUserId: text("created_by_user_id").notNull(),
-    // If you adopt Clerk Organizations later:
-    // orgId: text("org_id"),
+
+    // Inventory this asset belongs to
+    inventoryId: uuid("inventory_id")
+      .notNull()
+      .references(() => inventories.id),
 
     type: assetType("type").notNull(),
     name: text("name").notNull(),
@@ -38,11 +62,13 @@ export const assets = pgTable(
     model: text("model"),
     serialNumber: text("serial_number"),
 
-    // ✅ Optional image (public URL for now)
     imageUrl: text("image_url"),
 
     status: assetStatus("status").notNull().default("IN_STOCK"),
     assignedToUserId: text("assigned_to_user_id"),
+
+    // How many units of this asset
+    quantity: integer("quantity").notNull().default(0),
 
     purchaseDate: date("purchase_date"),
     warrantyEndDate: date("warranty_end_date"),
@@ -59,5 +85,6 @@ export const assets = pgTable(
   },
   (t) => ({
     createdByIdx: index("assets_created_by_idx").on(t.createdByUserId),
+    inventoryIdx: index("assets_inventory_id_idx").on(t.inventoryId),
   }),
 );
