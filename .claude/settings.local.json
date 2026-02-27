@@ -18,7 +18,10 @@
       "Bash(grep -r \"E2E_TEST_MODE\\\\|process.env\" /d/smart-inventory-hub/.env*)",
       "Bash(cat /d/smart-inventory-hub/src/app/api/assets/[id]/route.ts)",
       "Bash(cat /d/smart-inventory-hub/src/app/api/inventories/[id]/route.ts)",
-      "Bash(ls -la /d/smart-inventory-hub/src/app/\\\\\\(app\\\\\\)/dashboard/)"
+      "Bash(ls -la /d/smart-inventory-hub/src/app/\\\\\\(app\\\\\\)/dashboard/)",
+      "Bash(bun drizzle-kit push)",
+      "Bash(bun drizzle-kit push --force)",
+      "Bash(bun run build)"
     ]
   }
 }

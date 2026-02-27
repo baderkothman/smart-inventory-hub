@@ -1,15 +1,23 @@
 "use client";
 
 import type {
+  CellClickedEvent,
   ColDef,
-  ICellRendererParams,
-  RowDoubleClickedEvent,
+  SelectionChangedEvent,
   ValueFormatterParams,
 } from "ag-grid-community";
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-import { MoreHorizontal, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  FolderInput,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -37,17 +45,22 @@ import {
 } from "@/components/ui/select";
 
 import AddAssetDialog from "./widgets/add-asset-dialog";
+import AssetPreviewPanel, {
+  type PreviewAsset,
+} from "./widgets/asset-preview-panel";
 import DeleteAssetDialog from "./widgets/delete-asset-dialog";
 import EditAssetDialog from "./widgets/edit-asset-dialog";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
+
+const ALL_INV = "__all__";
 
 type AssetType = "LAPTOP" | "MONITOR" | "LICENSE" | "OTHER";
 type AssetStatus = "IN_STOCK" | "ASSIGNED" | "RETIRED";
 
 type AssetRow = {
   id: string;
-  inventoryId: string;
+  inventoryId: string | null;
   type: AssetType;
   name: string;
   brand: string | null;
@@ -83,6 +96,17 @@ function formatDate(v: unknown) {
   }).format(d);
 }
 
+function getInitials(name: string) {
+  return (
+    name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase())
+      .join("") || "A"
+  );
+}
+
 function GridLoadingOverlay() {
   return (
     <div className="flex h-full items-center justify-center">
@@ -94,55 +118,22 @@ function GridLoadingOverlay() {
   );
 }
 
-async function fetchJson<T>(
-  input: RequestInfo,
-  init?: RequestInit,
-): Promise<T> {
-  const res = await fetch(input, {
-    ...init,
-    headers: {
-      Accept: "application/json",
-      ...(init?.headers ?? {}),
-    },
-    cache: "no-store",
-  });
-
-  const text = await res.text();
-
-  if (!res.ok) {
-    throw new Error(
-      `${res.status} ${res.statusText} from ${
-        typeof input === "string" ? input : "request"
-      }: ${text.slice(0, 400)}`,
-    );
-  }
-  if (!text) throw new Error("Empty response body");
-
-  return JSON.parse(text) as T;
-}
-
-function getInitials(name: string) {
-  const initials = name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("");
-  return initials || "A";
-}
-
-function ImageCell(p: ICellRendererParams<AssetRow, string | null>) {
-  const url = (p.value ?? "").trim();
-  const name = p.data?.name ?? "Asset";
-  const initials = getInitials(name);
-
+function ImageCell({
+  value,
+  data,
+}: {
+  value: string | null;
+  data?: AssetRow;
+}) {
+  const url = (value ?? "").trim();
+  const name = data?.name ?? "Asset";
   const [failed, setFailed] = useState(false);
 
   if (!url || failed) {
     return (
       <div className="flex items-center justify-center">
         <div className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-secondary text-xs font-semibold text-secondary-foreground">
-          {initials}
+          {getInitials(name)}
         </div>
       </div>
     );
@@ -162,54 +153,24 @@ function ImageCell(p: ICellRendererParams<AssetRow, string | null>) {
   );
 }
 
-function RowMenuCell(
-  props: ICellRendererParams<AssetRow, unknown> & {
-    onEdit: (row: AssetRow) => void;
-    onDelete: (row: AssetRow) => void;
-  },
-) {
-  const row = props.data;
-  if (!row) return null;
-
-  const stopRowEvents = (e: { stopPropagation: () => void }) => {
-    e.stopPropagation();
-  };
-
-  return (
-    <div className="flex items-center justify-end pr-1">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onPointerDown={stopRowEvents}
-            onClick={stopRowEvents}
-            aria-label="Row actions"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-
-        <DropdownMenuContent align="end" className="w-44">
-          <DropdownMenuItem onSelect={() => props.onEdit(row)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit
-          </DropdownMenuItem>
-
-          <DropdownMenuSeparator />
-
-          <DropdownMenuItem
-            className="text-destructive focus:text-destructive"
-            onSelect={() => props.onDelete(row)}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  );
+async function fetchJson<T>(
+  input: RequestInfo,
+  init?: RequestInit,
+): Promise<T> {
+  const res = await fetch(input, {
+    ...init,
+    headers: { Accept: "application/json", ...(init?.headers ?? {}) },
+    cache: "no-store",
+  });
+  const text = await res.text();
+  if (!res.ok)
+    throw new Error(
+      `${res.status} ${res.statusText} from ${
+        typeof input === "string" ? input : "request"
+      }: ${text.slice(0, 400)}`,
+    );
+  if (!text) throw new Error("Empty response body");
+  return JSON.parse(text) as T;
 }
 
 /* ── Inventory management dialogs ─────────────────────────────── */
@@ -423,7 +384,9 @@ function DeleteInventoryDialog({
     setBusy(true);
     setError(null);
     try {
-      await fetchJson(`/api/inventories/${inventory.id}`, { method: "DELETE" });
+      await fetchJson(`/api/inventories/${inventory.id}`, {
+        method: "DELETE",
+      });
       onDeleted(inventory.id);
       onOpenChange(false);
     } catch (e) {
@@ -475,11 +438,104 @@ function DeleteInventoryDialog({
   );
 }
 
+function BulkMoveDialog({
+  open,
+  onOpenChange,
+  count,
+  inventories,
+  onMove,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  count: number;
+  inventories: Inventory[];
+  onMove: (inventoryId: string) => Promise<void>;
+}) {
+  const [targetId, setTargetId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setTargetId("");
+      setBusy(false);
+      setError(null);
+    }
+  }, [open]);
+
+  async function doMove() {
+    if (!targetId || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await onMove(targetId);
+      onOpenChange(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to move assets.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Move to inventory</DialogTitle>
+          <DialogDescription>
+            Move {count} selected item{count !== 1 ? "s" : ""} to a different
+            inventory.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4">
+          <div className="grid gap-1.5">
+            <Label>Target inventory</Label>
+            <Select value={targetId} onValueChange={setTargetId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose inventory…" />
+              </SelectTrigger>
+              <SelectContent>
+                {inventories.map((inv) => (
+                  <SelectItem key={inv.id} value={inv.id}>
+                    {inv.name}
+                    {inv.isDefault ? " (default)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {error && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2">
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button
+            variant="secondary"
+            onClick={() => onOpenChange(false)}
+            disabled={busy}
+          >
+            Cancel
+          </Button>
+          <Button onClick={doMove} disabled={!targetId || busy}>
+            <FolderInput className="mr-1.5 h-4 w-4" />
+            {busy ? "Moving…" : "Move"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* ── Main dashboard ────────────────────────────────────────────── */
 
 export default function DashboardClient() {
+  const gridRef = useRef<AgGridReact<AssetRow>>(null);
+
   const [inventoriesData, setInventoriesData] = useState<Inventory[]>([]);
   const [invLoading, setInvLoading] = useState(true);
+  // "all" is a special value meaning "show all inventories"
   const [selectedInventoryId, setSelectedInventoryId] = useState<string | null>(
     null,
   );
@@ -492,9 +548,14 @@ export default function DashboardClient() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [activeRow, setActiveRow] = useState<AssetRow | null>(null);
 
+  const [previewAsset, setPreviewAsset] = useState<PreviewAsset | null>(null);
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+
   const [createInvOpen, setCreateInvOpen] = useState(false);
   const [renameInvOpen, setRenameInvOpen] = useState(false);
   const [deleteInvOpen, setDeleteInvOpen] = useState(false);
+  const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
   /* ── Load inventories on mount ─────────────────────────────── */
   useEffect(() => {
@@ -514,17 +575,19 @@ export default function DashboardClient() {
     void loadInventories();
   }, []);
 
-  /* ── Load assets when selected inventory changes ──────────── */
-  const refresh = useCallback(async (inventoryId: string | null) => {
-    if (!inventoryId) {
+  /* ── Load assets ────────────────────────────────────────────── */
+  const refresh = useCallback(async (invId: string | null) => {
+    if (!invId) {
       setRows([]);
       return;
     }
     setLoading(true);
     try {
-      const data = await fetchJson<AssetRow[]>(
-        `/api/assets?inventoryId=${encodeURIComponent(inventoryId)}`,
-      );
+      const url =
+        invId === ALL_INV
+          ? "/api/assets"
+          : `/api/assets?inventoryId=${encodeURIComponent(invId)}`;
+      const data = await fetchJson<AssetRow[]>(url);
       setRows(data);
     } catch (e) {
       console.error(e);
@@ -539,11 +602,27 @@ export default function DashboardClient() {
   }, [refresh, selectedInventoryId]);
 
   const selectedInventory = useMemo(
-    () => inventoriesData.find((i) => i.id === selectedInventoryId) ?? null,
+    () =>
+      selectedInventoryId && selectedInventoryId !== ALL_INV
+        ? (inventoriesData.find((i) => i.id === selectedInventoryId) ?? null)
+        : null,
     [inventoriesData, selectedInventoryId],
   );
 
-  /* ── Grid callbacks ─────────────────────────────────────────── */
+  function getInventoryName(invId: string | null): string | null {
+    if (!invId) return null;
+    return inventoriesData.find((i) => i.id === invId)?.name ?? null;
+  }
+
+  /* ── Selection ──────────────────────────────────────────────── */
+  const onSelectionChanged = useCallback(
+    (e: SelectionChangedEvent<AssetRow>) => {
+      setSelectedRowIds(e.api.getSelectedRows().map((r) => r.id));
+    },
+    [],
+  );
+
+  /* ── Preview / edit triggers ────────────────────────────────── */
   const openEdit = useCallback((row: AssetRow) => {
     setActiveRow(row);
     setEditOpen(true);
@@ -554,6 +633,17 @@ export default function DashboardClient() {
     setDeleteOpen(true);
   }, []);
 
+  const onCellClicked = useCallback(
+    (e: CellClickedEvent<AssetRow>) => {
+      // Checkbox column: only toggles selection, no preview
+      if (e.colDef.checkboxSelection) return;
+      if (!e.data) return;
+      setPreviewAsset(e.data);
+    },
+    [],
+  );
+
+  /* ── Column definitions ─────────────────────────────────────── */
   const defaultColDef = useMemo<ColDef<AssetRow>>(
     () => ({
       sortable: true,
@@ -564,61 +654,74 @@ export default function DashboardClient() {
     [],
   );
 
+  const showInvCol = selectedInventoryId === ALL_INV;
+
   const colDefs = useMemo<ColDef<AssetRow>[]>(() => {
     const dateFmt = (p: ValueFormatterParams<AssetRow, unknown>) =>
       formatDate(p.value);
 
     return [
+      // Checkbox selection column
+      {
+        checkboxSelection: true,
+        headerCheckboxSelection: true,
+        width: 44,
+        minWidth: 44,
+        maxWidth: 44,
+        pinned: "left" as const,
+        sortable: false,
+        filter: false,
+        resizable: false,
+        suppressNavigable: true,
+        headerName: "",
+      },
+      // Image
       {
         headerName: "",
         field: "imageUrl",
         width: 72,
-        pinned: "left",
+        pinned: "left" as const,
         sortable: false,
         filter: false,
         resizable: false,
         cellRenderer: ImageCell,
       },
+      // Inventory (only in "All" view)
+      ...(showInvCol
+        ? [
+            {
+              field: "inventoryId" as const,
+              headerName: "Inventory",
+              width: 160,
+              valueFormatter: (
+                p: ValueFormatterParams<AssetRow, string | null>,
+              ) => {
+                if (!p.value) return "Unassigned";
+                return getInventoryName(p.value) ?? "Unknown";
+              },
+            } satisfies ColDef<AssetRow>,
+          ]
+        : []),
       { field: "type", width: 130 },
-      { field: "name", flex: 1, minWidth: 220 },
-      { field: "brand", width: 150 },
-      { field: "model", width: 150 },
-      { field: "serialNumber", headerName: "Serial", width: 180 },
-      { field: "quantity", headerName: "Qty", width: 90 },
+      { field: "name", flex: 1, minWidth: 200 },
+      { field: "brand", width: 140 },
+      { field: "model", width: 140 },
+      { field: "serialNumber", headerName: "Serial", width: 170 },
+      { field: "quantity", headerName: "Qty", width: 80 },
       { field: "status", width: 130 },
       {
         field: "createdAt",
         headerName: "Created",
-        width: 210,
+        width: 200,
         valueFormatter: dateFmt,
       },
-      {
-        headerName: "",
-        width: 64,
-        pinned: "right",
-        sortable: false,
-        filter: false,
-        resizable: false,
-        cellRenderer: RowMenuCell,
-        cellRendererParams: {
-          onEdit: (row: AssetRow) => openEdit(row),
-          onDelete: (row: AssetRow) => openDelete(row),
-        },
-      },
     ];
-  }, [openDelete, openEdit]);
-
-  const onRowDoubleClicked = useCallback(
-    (e: RowDoubleClickedEvent<AssetRow>) => {
-      if (!e.data) return;
-      openEdit(e.data);
-    },
-    [openEdit],
-  );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showInvCol, inventoriesData]);
 
   /* ── Inventory management handlers ─────────────────────────── */
   async function setAsDefault() {
-    if (!selectedInventoryId) return;
+    if (!selectedInventoryId || selectedInventoryId === ALL_INV) return;
     try {
       const updated = await fetchJson<Inventory>(
         `/api/inventories/${selectedInventoryId}`,
@@ -629,14 +732,39 @@ export default function DashboardClient() {
         },
       );
       setInventoriesData((prev) =>
-        prev.map((i) => ({
-          ...i,
-          isDefault: i.id === updated.id,
-        })),
+        prev.map((i) => ({ ...i, isDefault: i.id === updated.id })),
       );
     } catch (e) {
       console.error(e);
     }
+  }
+
+  /* ── Bulk operations ────────────────────────────────────────── */
+  async function bulkMove(inventoryId: string) {
+    await fetchJson("/api/assets/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "move", ids: selectedRowIds, inventoryId }),
+    });
+    gridRef.current?.api.deselectAll();
+    setSelectedRowIds([]);
+    void refresh(selectedInventoryId);
+    setPreviewAsset(null);
+  }
+
+  async function bulkDelete() {
+    await fetchJson("/api/assets/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", ids: selectedRowIds }),
+    });
+    setRows((prev) => prev.filter((r) => !selectedRowIds.includes(r.id)));
+    if (previewAsset && selectedRowIds.includes(previewAsset.id)) {
+      setPreviewAsset(null);
+    }
+    gridRef.current?.api.deselectAll();
+    setSelectedRowIds([]);
+    setBulkDeleteConfirm(false);
   }
 
   /* ── Empty state ────────────────────────────────────────────── */
@@ -649,7 +777,6 @@ export default function DashboardClient() {
             Create your first inventory to start tracking assets.
           </p>
         </div>
-
         <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-[var(--shadow-1)]">
           <p className="mb-4 text-sm text-muted-foreground">
             No inventories yet.
@@ -659,7 +786,6 @@ export default function DashboardClient() {
             Create inventory
           </Button>
         </div>
-
         <CreateInventoryDialog
           open={createInvOpen}
           onOpenChange={setCreateInvOpen}
@@ -684,23 +810,27 @@ export default function DashboardClient() {
         </div>
 
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-          <div className="w-full sm:w-[300px]">
+          <div className="w-full sm:w-[280px]">
             <Input
               value={quickFilterText}
               onChange={(e) => setQuickFilterText(e.target.value)}
-              placeholder="Search by name, brand, model, serial…"
+              placeholder="Search by name, brand, model…"
               className="h-9"
             />
           </div>
-
-          {selectedInventoryId && (
-            <AddAssetDialog
-              inventoryId={selectedInventoryId}
-              onCreated={(created) => {
-                setRows((prev) => [created, ...prev]);
-              }}
-            />
-          )}
+          <AddAssetDialog
+            inventories={inventoriesData}
+            defaultInventoryId={
+              selectedInventoryId !== ALL_INV ? selectedInventoryId : null
+            }
+            onCreated={(created) => {
+              const visible =
+                selectedInventoryId === ALL_INV ||
+                created.inventoryId === selectedInventoryId ||
+                (!created.inventoryId && !selectedInventoryId);
+              if (visible) setRows((prev) => [created, ...prev]);
+            }}
+          />
         </div>
       </div>
 
@@ -712,13 +842,21 @@ export default function DashboardClient() {
 
         <Select
           value={selectedInventoryId ?? ""}
-          onValueChange={setSelectedInventoryId}
+          onValueChange={(v) => {
+            setSelectedInventoryId(v);
+            setPreviewAsset(null);
+            setSelectedRowIds([]);
+          }}
           disabled={invLoading}
         >
-          <SelectTrigger className="h-8 w-[200px] text-sm">
+          <SelectTrigger className="h-8 w-[220px] text-sm">
             <SelectValue placeholder="Select inventory…" />
           </SelectTrigger>
           <SelectContent>
+            {/* Virtual "All" option */}
+            <SelectItem value={ALL_INV}>
+              <span className="font-medium">All inventories</span>
+            </SelectItem>
             {inventoriesData.map((inv) => (
               <SelectItem key={inv.id} value={inv.id}>
                 {inv.name}
@@ -770,16 +908,18 @@ export default function DashboardClient() {
 
       {/* Grid surface */}
       <div className="rounded-2xl border border-border bg-card shadow-[var(--shadow-1)]">
+        {/* Grid header */}
         <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
           <div className="min-w-0">
             <div className="text-sm font-semibold">
-              {selectedInventory?.name ?? "—"}
+              {selectedInventoryId === ALL_INV
+                ? "All inventories"
+                : (selectedInventory?.name ?? "—")}
             </div>
             <div className="text-xs text-muted-foreground">
               {loading ? "Loading…" : `${rows.length} asset(s)`}
             </div>
           </div>
-
           <Button
             variant="ghost"
             size="icon"
@@ -789,41 +929,105 @@ export default function DashboardClient() {
             aria-label="Refresh"
             title="Refresh"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+            />
           </Button>
         </div>
 
-        <div className="p-3">
-          <div
-            className="ag-theme-quartz"
-            style={{ height: 600, width: "100%" }}
-          >
-            <AgGridReact<AssetRow>
-              theme="legacy"
-              rowData={rows}
-              columnDefs={colDefs}
-              defaultColDef={defaultColDef}
-              quickFilterText={quickFilterText}
-              loading={loading}
-              loadingOverlayComponent={GridLoadingOverlay}
-              pagination
-              paginationPageSize={25}
-              getRowId={(p) => p.data.id}
-              rowHeight={52}
-              rowSelection="single"
-              suppressCellFocus
-              enableCellTextSelection
-              onRowDoubleClicked={onRowDoubleClicked}
-            />
+        {/* Grid + preview split */}
+        <div className="flex overflow-hidden">
+          {/* Grid */}
+          <div className={`p-3 ${previewAsset ? "min-w-0 flex-1" : "w-full"}`}>
+            <div className="ag-theme-quartz" style={{ height: 600, width: "100%" }}>
+              <AgGridReact<AssetRow>
+                ref={gridRef}
+                theme="legacy"
+                rowData={rows}
+                columnDefs={colDefs}
+                defaultColDef={defaultColDef}
+                quickFilterText={quickFilterText}
+                loading={loading}
+                loadingOverlayComponent={GridLoadingOverlay}
+                pagination
+                paginationPageSize={25}
+                getRowId={(p) => p.data.id}
+                rowHeight={52}
+                rowSelection="multiple"
+                suppressRowClickSelection
+                suppressCellFocus
+                enableCellTextSelection
+                onSelectionChanged={onSelectionChanged}
+                onCellClicked={onCellClicked}
+              />
+            </div>
           </div>
+
+          {/* Preview panel */}
+          {previewAsset && (
+            <div
+              className="w-[280px] shrink-0 overflow-hidden border-l border-border"
+              style={{ height: 600 + 44 /* match grid + header */ }}
+            >
+              <AssetPreviewPanel
+                asset={previewAsset}
+                inventoryName={getInventoryName(previewAsset.inventoryId)}
+                onEdit={(a) => openEdit(a as AssetRow)}
+                onDelete={(a) => openDelete(a as AssetRow)}
+                onClose={() => setPreviewAsset(null)}
+              />
+            </div>
+          )}
         </div>
 
+        {/* Bulk action bar */}
+        {selectedRowIds.length > 0 && (
+          <div className="flex items-center gap-3 border-t border-border bg-primary/5 px-4 py-3">
+            <span className="text-sm font-medium">
+              {selectedRowIds.length} selected
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => setBulkMoveOpen(true)}
+            >
+              <FolderInput className="h-3.5 w-3.5" />
+              Move to inventory
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => setBulkDeleteConfirm(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete selected
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-muted-foreground"
+              onClick={() => {
+                gridRef.current?.api.deselectAll();
+                setSelectedRowIds([]);
+              }}
+            >
+              Clear
+            </Button>
+          </div>
+        )}
+
+        {/* Footer tip */}
         <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
-          Tip: double-click a row to edit. Use the "…" menu for delete.
+          Click a row to preview · Use checkboxes for multi-select ·{" "}
+          {previewAsset
+            ? "Preview open — Edit and Delete are in the panel."
+            : "Select items for bulk move or delete."}
         </div>
       </div>
 
-      {/* Asset modals */}
+      {/* Asset dialogs */}
       <EditAssetDialog
         open={editOpen}
         onOpenChange={(o) => {
@@ -831,10 +1035,13 @@ export default function DashboardClient() {
           if (!o) setActiveRow(null);
         }}
         asset={activeRow}
+        inventories={inventoriesData}
         onUpdated={(updated) => {
           setRows((prev) =>
             prev.map((r) => (r.id === updated.id ? updated : r)),
           );
+          if (previewAsset?.id === updated.id)
+            setPreviewAsset(updated as PreviewAsset);
         }}
       />
 
@@ -848,10 +1055,47 @@ export default function DashboardClient() {
         assetName={activeRow?.name ?? null}
         onDeleted={(id) => {
           setRows((prev) => prev.filter((r) => r.id !== id));
+          if (previewAsset?.id === id) setPreviewAsset(null);
         }}
       />
 
-      {/* Inventory modals */}
+      {/* Bulk delete confirm */}
+      <Dialog open={bulkDeleteConfirm} onOpenChange={setBulkDeleteConfirm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete {selectedRowIds.length} items?</DialogTitle>
+            <DialogDescription>
+              This will permanently delete the selected assets. This cannot be
+              undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => setBulkDeleteConfirm(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void bulkDelete()}
+            >
+              Delete {selectedRowIds.length} items
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk move */}
+      <BulkMoveDialog
+        open={bulkMoveOpen}
+        onOpenChange={setBulkMoveOpen}
+        count={selectedRowIds.length}
+        inventories={inventoriesData}
+        onMove={bulkMove}
+      />
+
+      {/* Inventory dialogs */}
       <CreateInventoryDialog
         open={createInvOpen}
         onOpenChange={setCreateInvOpen}
@@ -881,6 +1125,7 @@ export default function DashboardClient() {
           setInventoriesData(remaining);
           setSelectedInventoryId(remaining[0]?.id ?? null);
           setRows([]);
+          setPreviewAsset(null);
         }}
       />
     </div>

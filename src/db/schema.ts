@@ -50,10 +50,8 @@ export const assets = pgTable(
     // Authorization scope (required)
     createdByUserId: text("created_by_user_id").notNull(),
 
-    // Inventory this asset belongs to
-    inventoryId: uuid("inventory_id")
-      .notNull()
-      .references(() => inventories.id),
+    // Inventory this asset belongs to (nullable = unassigned)
+    inventoryId: uuid("inventory_id").references(() => inventories.id),
 
     type: assetType("type").notNull(),
     name: text("name").notNull(),

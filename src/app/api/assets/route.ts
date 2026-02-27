@@ -62,28 +62,36 @@ export async function POST(req: Request) {
 
     const name = String(data?.name ?? "").trim();
     const type = String(data?.type ?? "").trim();
-    const inventoryId = String(data?.inventoryId ?? "").trim();
 
-    if (!name || !type || !inventoryId) {
+    if (!name || !type) {
       return NextResponse.json(
-        { error: "Missing required fields: type, name, inventoryId" },
+        { error: "Missing required fields: type, name" },
         { status: 400 },
       );
     }
 
-    // Verify the inventory belongs to this user
-    const [inv] = await db
-      .select({ id: inventories.id })
-      .from(inventories)
-      .where(
-        and(eq(inventories.id, inventoryId), eq(inventories.userId, userId)),
-      );
+    // inventoryId is optional — null means unassigned
+    const rawInvId = data?.inventoryId;
+    const inventoryId =
+      rawInvId != null && String(rawInvId).trim()
+        ? String(rawInvId).trim()
+        : null;
 
-    if (!inv) {
-      return NextResponse.json(
-        { error: "Inventory not found" },
-        { status: 404 },
-      );
+    // If an inventoryId is provided, verify it belongs to this user
+    if (inventoryId) {
+      const [inv] = await db
+        .select({ id: inventories.id })
+        .from(inventories)
+        .where(
+          and(eq(inventories.id, inventoryId), eq(inventories.userId, userId)),
+        );
+
+      if (!inv) {
+        return NextResponse.json(
+          { error: "Inventory not found" },
+          { status: 404 },
+        );
+      }
     }
 
     const quantity =
@@ -95,7 +103,7 @@ export async function POST(req: Request) {
       .insert(assets)
       .values({
         createdByUserId: userId,
-        inventoryId,
+        inventoryId: inventoryId ?? undefined,
         type: data.type,
         name,
         brand: data.brand ?? null,

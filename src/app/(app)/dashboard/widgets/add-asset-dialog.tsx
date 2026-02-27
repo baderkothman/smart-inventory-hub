@@ -22,13 +22,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import ImageUploadField from "./image-upload-field";
 
 type AssetType = "LAPTOP" | "MONITOR" | "LICENSE" | "OTHER";
 type AssetStatus = "IN_STOCK" | "ASSIGNED" | "RETIRED";
 
+type Inventory = {
+  id: string;
+  name: string;
+  isDefault: boolean;
+};
+
 type CreatedAsset = {
   id: string;
-  inventoryId: string;
+  inventoryId: string | null;
   type: AssetType;
   name: string;
   brand: string | null;
@@ -45,6 +52,7 @@ type CreatedAsset = {
 
 const TYPE_OPTIONS: AssetType[] = ["LAPTOP", "MONITOR", "LICENSE", "OTHER"];
 const STATUS_OPTIONS: AssetStatus[] = ["IN_STOCK", "ASSIGNED", "RETIRED"];
+const NO_INVENTORY = "__none__";
 
 function labelize(value: string) {
   return value
@@ -60,39 +68,18 @@ async function fetchJson<T>(
 ): Promise<T> {
   const res = await fetch(input, {
     ...init,
-    headers: {
-      Accept: "application/json",
-      ...(init?.headers ?? {}),
-    },
+    headers: { Accept: "application/json", ...(init?.headers ?? {}) },
     cache: "no-store",
   });
-
   const text = await res.text();
-
-  if (!res.ok) {
+  if (!res.ok)
     throw new Error(
-      `${res.status} ${res.statusText} from ${
-        typeof input === "string" ? input : "request"
-      }: ${text.slice(0, 400)}`,
+      `${res.status} ${res.statusText}: ${text.slice(0, 400)}`,
     );
-  }
-
   if (!text) throw new Error("Empty response body");
   return JSON.parse(text) as T;
 }
 
-function isProbablyUrl(value: string) {
-  const v = value.trim();
-  if (!v) return false;
-  try {
-    const u = new URL(v);
-    return u.protocol === "http:" || u.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-/* ── Section label ───────────────────────────────────────────────────────── */
 function SectionLabel({ n, label }: { n: string; label: string }) {
   return (
     <div className="mb-4 flex items-center gap-3">
@@ -107,12 +94,13 @@ function SectionLabel({ n, label }: { n: string; label: string }) {
   );
 }
 
-/* ── Main component ──────────────────────────────────────────────────────── */
 export default function AddAssetDialog({
-  inventoryId,
+  inventories,
+  defaultInventoryId,
   onCreated,
 }: {
-  inventoryId: string;
+  inventories: Inventory[];
+  defaultInventoryId?: string | null;
   onCreated: (row: CreatedAsset) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -122,17 +110,15 @@ export default function AddAssetDialog({
   const busy = saving || generating;
 
   const [error, setError] = useState<string | null>(null);
-  const [imgBroken, setImgBroken] = useState(false);
 
+  const [selectedInvId, setSelectedInvId] = useState<string>(NO_INVENTORY);
   const [type, setType] = useState<AssetType>("LAPTOP");
   const [status, setStatus] = useState<AssetStatus>("IN_STOCK");
-
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
   const [quantity, setQuantity] = useState("1");
-
   const [imageUrl, setImageUrl] = useState("");
   const [notes, setNotes] = useState("");
   const [description, setDescription] = useState("");
@@ -142,17 +128,8 @@ export default function AddAssetDialog({
     [name, busy],
   );
 
-  const showPreview = useMemo(
-    () => isProbablyUrl(imageUrl) && !imgBroken,
-    [imageUrl, imgBroken],
-  );
-
-  const showInvalidUrlHint = useMemo(() => {
-    const v = imageUrl.trim();
-    return v.length > 0 && !isProbablyUrl(v);
-  }, [imageUrl]);
-
   function resetForm() {
+    setSelectedInvId(defaultInventoryId ?? NO_INVENTORY);
     setType("LAPTOP");
     setStatus("IN_STOCK");
     setName("");
@@ -164,22 +141,23 @@ export default function AddAssetDialog({
     setNotes("");
     setDescription("");
     setError(null);
-    setImgBroken(false);
     setSaving(false);
     setGenerating(false);
   }
 
   useEffect(() => {
-    if (!open) resetForm();
+    if (open) {
+      setSelectedInvId(defaultInventoryId ?? NO_INVENTORY);
+    } else {
+      resetForm();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, defaultInventoryId]);
 
   async function generateDescription() {
-    if (name.trim().length === 0 || busy) return;
-
+    if (!name.trim() || busy) return;
     setGenerating(true);
     setError(null);
-
     try {
       const data = await fetchJson<{ description?: string }>(
         "/api/ai/asset-description",
@@ -196,14 +174,10 @@ export default function AddAssetDialog({
           }),
         },
       );
-
       setDescription((data.description ?? "").trim());
     } catch (e) {
-      console.error(e);
       setError(
-        e instanceof Error
-          ? e.message
-          : "Failed to generate description. Please try again.",
+        e instanceof Error ? e.message : "Failed to generate. Try again.",
       );
     } finally {
       setGenerating(false);
@@ -211,13 +185,14 @@ export default function AddAssetDialog({
   }
 
   async function save() {
-    if (name.trim().length === 0 || busy) return;
-
+    if (!canSubmit) return;
     setSaving(true);
     setError(null);
-
     try {
-      const qty = Math.max(0, Math.floor(Number(quantity) || 0));
+      const inventoryId =
+        selectedInvId && selectedInvId !== NO_INVENTORY
+          ? selectedInvId
+          : undefined;
 
       const created = await fetchJson<CreatedAsset>("/api/assets", {
         method: "POST",
@@ -231,16 +206,14 @@ export default function AddAssetDialog({
           model: model.trim() || null,
           serialNumber: serialNumber.trim() || null,
           imageUrl: imageUrl.trim() || null,
-          quantity: qty,
+          quantity: Math.max(0, Math.floor(Number(quantity) || 0)),
           notes: notes.trim() || null,
           description: description.trim() || null,
         }),
       });
-
       onCreated(created);
       setOpen(false);
     } catch (e) {
-      console.error(e);
       setError(
         e instanceof Error ? e.message : "Failed to create asset. Try again.",
       );
@@ -256,12 +229,8 @@ export default function AddAssetDialog({
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        {/*
-         * flex-col + overflow-hidden lets us pin the header & footer
-         * while the form body scrolls independently on any screen size.
-         */}
         <DialogContent className="flex max-h-[92dvh] w-[calc(100%-1.5rem)] flex-col gap-0 overflow-hidden p-0 sm:w-full sm:max-w-2xl">
-          {/* ── Sticky header ─────────────────────────────────────────── */}
+          {/* Sticky header */}
           <DialogHeader className="shrink-0 border-b border-border/70 px-6 py-5">
             <DialogTitle
               className="text-base font-semibold"
@@ -274,7 +243,7 @@ export default function AddAssetDialog({
             </DialogDescription>
           </DialogHeader>
 
-          {/* ── Scrollable form body ───────────────────────────────────── */}
+          {/* Scrollable form */}
           <form
             className="flex flex-1 flex-col overflow-hidden"
             onSubmit={(e) => {
@@ -283,25 +252,22 @@ export default function AddAssetDialog({
             }}
           >
             <div className="flex-1 overflow-y-auto">
-
-              {/* 01 — Identity ──────────────────────────────────────── */}
+              {/* 01 — Identity */}
               <div className="px-6 pb-5 pt-5">
                 <SectionLabel n="01" label="Identity" />
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="grid gap-1.5 sm:col-span-2">
-                    <Label htmlFor="asset-name" className="text-xs font-medium">
-                      Name{" "}
-                      <span className="text-destructive">*</span>
+                    <Label htmlFor="add-name" className="text-xs font-medium">
+                      Name <span className="text-destructive">*</span>
                     </Label>
                     <Input
-                      id="asset-name"
+                      id="add-name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="e.g. MacBook Pro 14 (M3)"
                       autoFocus
                     />
                   </div>
-
                   <div className="grid gap-1.5">
                     <Label className="text-xs font-medium">Type</Label>
                     <Select
@@ -309,7 +275,7 @@ export default function AddAssetDialog({
                       onValueChange={(v) => setType(v as AssetType)}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select type" />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {TYPE_OPTIONS.map((t) => (
@@ -321,9 +287,35 @@ export default function AddAssetDialog({
                     </Select>
                   </div>
                 </div>
+
+                {/* Inventory selector */}
+                <div className="mt-3 grid gap-1.5">
+                  <Label className="text-xs font-medium">Inventory</Label>
+                  <Select
+                    value={selectedInvId}
+                    onValueChange={setSelectedInvId}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choose inventory…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_INVENTORY}>
+                        <span className="text-muted-foreground">
+                          No specific inventory
+                        </span>
+                      </SelectItem>
+                      {inventories.map((inv) => (
+                        <SelectItem key={inv.id} value={inv.id}>
+                          {inv.name}
+                          {inv.isDefault ? " (default)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              {/* 02 — Details ───────────────────────────────────────── */}
+              {/* 02 — Details */}
               <div className="border-t border-border/50 px-6 pb-5 pt-5">
                 <SectionLabel n="02" label="Details" />
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -334,7 +326,7 @@ export default function AddAssetDialog({
                       onValueChange={(v) => setStatus(v as AssetStatus)}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Status" />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {STATUS_OPTIONS.map((s) => (
@@ -345,38 +337,34 @@ export default function AddAssetDialog({
                       </SelectContent>
                     </Select>
                   </div>
-
                   <div className="grid gap-1.5">
-                    <Label htmlFor="asset-brand" className="text-xs font-medium">
+                    <Label htmlFor="add-brand" className="text-xs font-medium">
                       Brand
                     </Label>
                     <Input
-                      id="asset-brand"
+                      id="add-brand"
                       value={brand}
                       onChange={(e) => setBrand(e.target.value)}
                       placeholder="Optional"
                     />
                   </div>
-
                   <div className="grid gap-1.5">
-                    <Label htmlFor="asset-model" className="text-xs font-medium">
+                    <Label htmlFor="add-model" className="text-xs font-medium">
                       Model
                     </Label>
                     <Input
-                      id="asset-model"
+                      id="add-model"
                       value={model}
                       onChange={(e) => setModel(e.target.value)}
                       placeholder="Optional"
                     />
                   </div>
-
                   <div className="grid gap-1.5">
-                    <Label htmlFor="asset-qty" className="text-xs font-medium">
-                      Qty{" "}
-                      <span className="text-destructive">*</span>
+                    <Label htmlFor="add-qty" className="text-xs font-medium">
+                      Qty <span className="text-destructive">*</span>
                     </Label>
                     <Input
-                      id="asset-qty"
+                      id="add-qty"
                       type="number"
                       min="0"
                       step="1"
@@ -388,83 +376,42 @@ export default function AddAssetDialog({
                 </div>
               </div>
 
-              {/* 03 — Tracking ──────────────────────────────────────── */}
+              {/* 03 — Tracking */}
               <div className="border-t border-border/50 px-6 pb-5 pt-5">
                 <SectionLabel n="03" label="Tracking" />
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="grid gap-1.5 sm:col-span-2">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-1.5">
                     <Label
-                      htmlFor="asset-serial"
+                      htmlFor="add-serial"
                       className="text-xs font-medium"
                     >
                       Serial number
                     </Label>
                     <Input
-                      id="asset-serial"
+                      id="add-serial"
                       value={serialNumber}
                       onChange={(e) => setSerialNumber(e.target.value)}
                       placeholder="Optional"
                     />
                   </div>
-
                   <div className="grid gap-1.5">
-                    <Label
-                      htmlFor="asset-image"
-                      className="text-xs font-medium"
-                    >
-                      Image URL
-                    </Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id="asset-image"
-                        value={imageUrl}
-                        onChange={(e) => {
-                          setImageUrl(e.target.value);
-                          setImgBroken(false);
-                        }}
-                        placeholder="https://…"
-                        className="min-w-0"
-                      />
-                      <div className="h-9 w-9 shrink-0 overflow-hidden rounded-md border border-border bg-muted/30">
-                        {showPreview ? (
-                          <img
-                            src={imageUrl.trim()}
-                            alt="Preview"
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                            referrerPolicy="no-referrer"
-                            onError={() => setImgBroken(true)}
-                          />
-                        ) : (
-                          <div className="grid h-full w-full place-items-center font-mono text-[9px] text-muted-foreground/50">
-                            IMG
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {showInvalidUrlHint && (
-                      <p className="text-[11px] text-muted-foreground">
-                        Enter a valid https:// URL to preview.
-                      </p>
-                    )}
-                    {imgBroken && isProbablyUrl(imageUrl) && (
-                      <p className="text-[11px] text-destructive">
-                        Image couldn&apos;t load — check the URL.
-                      </p>
-                    )}
+                    <Label className="text-xs font-medium">Image</Label>
+                    <ImageUploadField
+                      value={imageUrl}
+                      onChange={setImageUrl}
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* 04 — Notes & Description ───────────────────────────── */}
+              {/* 04 — Content */}
               <div className="border-t border-border/50 px-6 pb-6 pt-5">
                 <SectionLabel n="04" label="Content" />
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="grid gap-1.5">
                     <div className="flex items-center justify-between gap-2">
                       <Label
-                        htmlFor="asset-description"
+                        htmlFor="add-description"
                         className="text-xs font-medium"
                       >
                         Description
@@ -474,7 +421,7 @@ export default function AddAssetDialog({
                         variant="ghost"
                         size="sm"
                         onClick={generateDescription}
-                        disabled={busy || name.trim().length === 0}
+                        disabled={busy || !name.trim()}
                         className="h-7 gap-1.5 px-2 text-[11px]"
                       >
                         <Sparkles className="h-3 w-3" />
@@ -482,7 +429,7 @@ export default function AddAssetDialog({
                       </Button>
                     </div>
                     <Textarea
-                      id="asset-description"
+                      id="add-description"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       rows={5}
@@ -490,16 +437,15 @@ export default function AddAssetDialog({
                       className="resize-none text-sm"
                     />
                   </div>
-
                   <div className="grid gap-1.5">
                     <Label
-                      htmlFor="asset-notes"
+                      htmlFor="add-notes"
                       className="text-xs font-medium"
                     >
                       Notes
                     </Label>
                     <Textarea
-                      id="asset-notes"
+                      id="add-notes"
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       rows={5}
@@ -511,7 +457,7 @@ export default function AddAssetDialog({
               </div>
             </div>
 
-            {/* ── Sticky footer ───────────────────────────────────────── */}
+            {/* Sticky footer */}
             <div className="shrink-0 border-t border-border/70 bg-card/80 px-6 py-4 backdrop-blur-sm">
               {error && (
                 <div className="mb-3 rounded-md border border-destructive/30 bg-destructive/8 px-3 py-2.5">

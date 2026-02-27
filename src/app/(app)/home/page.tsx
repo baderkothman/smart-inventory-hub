@@ -359,42 +359,6 @@ export default async function SignedInHomePage() {
           </p>
         </div>
       )}
-
-      {/* ── Quick access ─────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-border bg-card shadow-[var(--shadow-1)]">
-        <div className="border-b border-border px-5 py-4">
-          <p
-            className="text-sm font-semibold tracking-tight"
-            style={{ fontFamily: "var(--font-syne), Syne, ui-sans-serif" }}
-          >
-            Quick access
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Go to your main destinations.
-          </p>
-        </div>
-
-        <div className="p-2">
-          <QuickLink
-            title="Dashboard"
-            description="Manage assets in the grid."
-            href="/dashboard"
-            icon={<LayoutGrid style={{ width: "14px", height: "14px" }} />}
-          />
-          <QuickLink
-            title="Profile"
-            description="View your account details."
-            href="/profile"
-            icon={<User style={{ width: "14px", height: "14px" }} />}
-          />
-          <QuickLink
-            title="Settings"
-            description="Security and preferences."
-            href="/settings"
-            icon={<Settings style={{ width: "14px", height: "14px" }} />}
-          />
-        </div>
-      </div>
     </div>
   );
 }

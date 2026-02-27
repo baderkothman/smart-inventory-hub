@@ -5,7 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { db } from "@/db";
-import { assets } from "@/db/schema";
+import { assets, inventories } from "@/db/schema";
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
@@ -61,7 +61,28 @@ export async function PATCH(
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
-  // Only allow fields your UI edits
+  // Handle inventoryId change — verify ownership of new inventory
+  let newInventoryId: string | null | undefined = undefined;
+  if ("inventoryId" in body) {
+    const raw = body.inventoryId;
+    if (raw === null || raw === "" || raw === undefined) {
+      newInventoryId = null;
+    } else {
+      const candidateId = String(raw).trim();
+      const [inv] = await db
+        .select({ id: inventories.id })
+        .from(inventories)
+        .where(
+          and(
+            eq(inventories.id, candidateId),
+            eq(inventories.userId, userId),
+          ),
+        );
+      if (!inv) return jsonError("Inventory not found", 404);
+      newInventoryId = candidateId;
+    }
+  }
+
   const patch: Record<string, unknown> = {
     type: body.type,
     status: body.status,
@@ -86,7 +107,12 @@ export async function PATCH(
     updatedAt: new Date(),
   };
 
-  // Remove undefined keys so we don’t overwrite unintentionally
+  // Apply inventoryId only if it was explicitly in the body
+  if (newInventoryId !== undefined) {
+    patch.inventoryId = newInventoryId;
+  }
+
+  // Remove undefined keys so we don't overwrite unintentionally
   Object.keys(patch).forEach((k) => patch[k] === undefined && delete patch[k]);
 
   const updatedRows = await db
