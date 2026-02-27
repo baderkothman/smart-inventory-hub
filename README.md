@@ -1,250 +1,303 @@
 # Smart Inventory Hub
 
-A Next.js dashboard to manage company assets (laptops, monitors, licenses) with:
-
-- **Fast grid UI** (AG Grid Community)
-- **Authentication & sessions** (Clerk)
-- **Postgres** on **Neon**
-- **ORM + migrations** (Drizzle)
-- **AI description generation** (Gemini via Google AI SDK) — wired via an API route
+A Next.js 16 dashboard for managing company assets (laptops, monitors, licenses) across multiple inventories, with authentication, AI-powered descriptions, analytics, and a full automated test suite.
 
 ---
 
-## Stack (Strict Requirements)
+## Stack
 
-- **Next.js 16 (App Router) + TypeScript**
-- **Neon (Postgres) + Drizzle ORM**
-- **Clerk Authentication**
-- **Google AI SDK (Gemini)** for description generation
-- **Tailwind CSS v4 + shadcn/ui**
-- **AG Grid (Community)**
-- **Bun** (package manager)
-- **Biome** (lint/format)
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 16 (App Router) + TypeScript |
+| Styling | Tailwind CSS v4 + shadcn/ui + Radix UI |
+| Auth | Clerk |
+| Database | Neon (Postgres) + Drizzle ORM |
+| Data Grid | AG Grid Community v35 |
+| AI | Google Gemini 2.5 Flash (`@google/genai`) |
+| Testing | Vitest v4 (unit/component) + Playwright v1.58 (E2E) |
+| Linting | Biome |
+| Package manager | Bun |
 
 ---
 
-## What’s Implemented So Far
+## Features
 
-### 1) Auth + Session Enforcement (Clerk)
+### Auth & Session Management (Clerk)
 
-- Guests can access:
-  - `/`
-  - `/sign-in/*`
-  - `/sign-up/*`
-- Everything else (e.g. `/dashboard`) requires a valid Clerk session.
-- API routes return **401 JSON** instead of redirect HTML (prevents client `res.json()` crashes).
+- Guests can access `/`, `/sign-in/*`, `/sign-up/*`
+- All other routes require a valid Clerk session (deny-by-default middleware)
+- API routes return `{ "error": "Unauthorized" }` (401 JSON) instead of redirect HTML
+- Sign-out redirects to `/`
 
 **Middleware:** `src/proxy.ts`
 
-- Deny-by-default (everything protected except public routes).
-- If request is `/api/*` (or `/trpc/*`) and user is not authenticated → returns:
-  ```json
-  { "error": "Unauthorized" }
-  ```
+### Multi-Inventory Support
 
-### 2) Two “Home” Experiences
+Each user can create and manage multiple named inventories:
 
-- `src/app/page.tsx`:
-  - If **signed in** → redirect to `/dashboard`
-  - If **guest** → landing page with Sign in / Sign up
+- Create / rename / delete inventories
+- Set a default inventory
+- Asset counts shown per inventory
+- Dashboard filters assets by selected inventory via `?inv=<inventoryId>` URL param
+- Deletion rules:
+  - Cannot delete an inventory that still has assets
+  - Cannot delete the last remaining inventory
+  - Deleting the current default auto-promotes the next inventory
 
-### 3) Sign-out returns to Home
+**API:** `src/app/api/inventories/`
 
-- `src/app/layout.tsx` sets:
-  - `afterSignOutUrl="/"`
+### Asset Management
 
-Dashboard includes a sign-out control (Clerk) that redirects to `/`.
+Full CRUD for assets, scoped to the authenticated user:
 
-### 4) Database Authorization Scoping
+| Field | Description |
+|-------|-------------|
+| `type` | LAPTOP, MONITOR, LICENSE, or OTHER |
+| `status` | IN_STOCK, ASSIGNED, or RETIRED |
+| `name`, `brand`, `model`, `serialNumber` | Identification |
+| `quantity` | Integer ≥ 0 |
+| `imageUrl` | Optional image |
+| `purchaseDate`, `warrantyEndDate` | Date fields |
+| `description`, `notes` | Free text |
+| `inventoryId` | Which inventory the asset belongs to |
 
-We do **NOT** store session tokens in our DB (Clerk handles sessions).
-We store **ownership** on assets so each user can only access their own inventory.
+**API:** `src/app/api/assets/`
 
-**Schema:** `src/db/schema.ts`
+### AI Description Generation
 
-- `assets.createdByUserId` (required)
-- Enums:
-  - `asset_type`: `LAPTOP | MONITOR | LICENSE | OTHER`
-  - `asset_status`: `IN_STOCK | ASSIGNED | RETIRED`
+`POST /api/ai/asset-description` calls Gemini 2.5 Flash to generate a concise technical description from type, name, brand, model, serial number, and notes. Auth required.
 
-### 5) Assets API
+### Dashboard (AG Grid)
 
-**List + Create:** `src/app/api/assets/route.ts`
+- Inventory selector dropdown
+- Quick filter text search across all columns
+- Columns: Image, Type, Name, Brand, Model, Serial, Qty, Status, Created, Actions
+- Double-click a row to open the Edit dialog
+- Right-click a row for a context menu (Edit / Delete)
+- Pagination: 25 rows per page
 
-- `GET /api/assets` → returns only assets owned by the signed-in user
-- `POST /api/assets` → creates an asset owned by the signed-in user
+### Home Page Analytics
 
-**Update + Delete (per-asset):** `src/app/api/assets/[id]/route.ts`
+Server-rendered stats with client-side interactive charts:
 
-- `PATCH /api/assets/:id`
-- `DELETE /api/assets/:id`
-- Both enforce:
-  - `WHERE id = :id AND created_by_user_id = :userId`
+- **Stat cards**: total inventories, total items, in-stock items
+- **Pie chart**: item distribution per inventory (SVG, 8-color palette)
+- **Inventory table**: name, asset count, is-default badge
+- **Quick access**: links to Dashboard, Profile, Settings
 
-### 6) Dashboard UI (AG Grid) + CRUD dialogs
+### Responsive Design + Dark Mode
 
-**Dashboard page:** `src/app/dashboard/page.tsx` → renders `<DashboardClient />`
-
-**Dashboard UI:** `src/app/dashboard/ui.tsx`
-
-- Loads assets via `/api/assets`
-- Quick search using AG Grid **Quick Filter**
-- Uses **AG Grid legacy theme mode**:
-  - `theme="legacy"` to avoid theme conflict error #239
-- CRUD actions:
-  - Add: `AddAssetDialog`
-  - Edit: `EditAssetDialog`
-  - Delete: `DeleteAssetDialog`
-- Updates UI state instantly after create/update/delete (no full refresh required).
+- Mobile-first responsive layout
+- Dark sidebar always-on (even in light mode)
+- Light / dark toggle persisted in `localStorage` (`sih-theme` key)
+- Flash-free theme init via inline script in root layout
 
 ---
 
-## Project Structure (Key Files)
+## Project Structure
 
 ```
 src/
   app/
+    (app)/                            # Protected routes (Clerk auth required)
+      _components/
+        app-shell.tsx                 # Main shell: dark sidebar + top bar
+        theme-toggle.tsx              # Light/dark toggle button
+      home/
+        page.tsx                      # Server component: stats + inventory data
+        analytics-charts.tsx          # Pie chart + legend (client)
+      dashboard/
+        page.tsx                      # Auth wrapper (server)
+        ui.tsx                        # AG Grid + all dialogs (client)
+        widgets/
+          add-asset-dialog.tsx
+          edit-asset-dialog.tsx
+          delete-asset-dialog.tsx     # Requires typing DELETE to confirm
+      profile/page.tsx                # Clerk <UserProfile />
+      settings/[[...rest]]/page.tsx   # Clerk <UserProfile /> (settings tab)
+      layout.tsx                      # Auth gate + AppShell wrapper
     api/
-      assets/
-        route.ts                # GET/POST assets (scoped to user)
-        [id]/
-          route.ts              # PATCH/DELETE assets/:id (scoped to user)
-      ai/
-        asset-description/
-          route.ts              # AI description endpoint
-    dashboard/
-      page.tsx                  # Dashboard route
-      ui.tsx                    # AG Grid + dialogs + fetch
-      widgets/
-        add-asset-dialog.tsx
-        edit-asset-dialog.tsx
-        delete-asset-dialog.tsx
+      assets/route.ts                 # GET/POST assets (scoped to user)
+      assets/[id]/route.ts            # GET/PATCH/DELETE single asset
+      inventories/route.ts            # GET/POST inventories
+      inventories/[id]/route.ts       # PATCH/DELETE single inventory
+      ai/asset-description/route.ts   # POST — Gemini description generation
     sign-in/[[...sign-in]]/page.tsx
     sign-up/[[...sign-up]]/page.tsx
-    layout.tsx                  # ClerkProvider config + afterSignOutUrl
-    page.tsx                    # Guest landing + signed-in redirect
-    globals.css                 # Tailwind + AG Grid CSS (legacy theme)
+    layout.tsx                        # Root layout: ClerkProvider, fonts, theme script
+    page.tsx                          # Landing page (public)
+    globals.css                       # Tailwind + AG Grid theme + design tokens
+  components/ui/                      # shadcn/ui components
   db/
-    index.ts                    # Drizzle DB client
-    schema.ts                   # assets table + enums
-proxy.ts                        # Clerk middleware protection
-drizzle.config.ts               # drizzle-kit config (migrations)
+    schema.ts                         # Drizzle schema: inventories + assets tables
+    index.ts                          # Drizzle + Neon client
+  lib/
+    labelize.ts                       # SCREAMING_SNAKE → Title Case, option arrays
+    utils.ts                          # cn() Tailwind class merger
+  proxy.ts                            # Clerk middleware (auth protection)
+  test/
+    setup.ts                          # Vitest global setup (jsdom mocks)
+    utils.tsx                         # Custom RTL render wrapper
+
+e2e/
+  landing.spec.ts                     # Landing page flows
+  auth-pages.spec.ts                  # Sign-in / sign-up pages
+  app-pages.spec.ts                   # Protected pages + API 401 checks
+
+.github/workflows/
+  tests.yml                           # CI: unit tests + E2E tests jobs
 ```
 
 ---
 
 ## Environment Variables
 
-Create `./.env.local`:
-
-### Database (Neon)
-
-Recommended split:
-
-- **Pooled** URL for app runtime
-- **Direct** URL for migrations/tools
+Create `.env.local` in the project root:
 
 ```env
-DATABASE_URL=postgresql://...-pooler...neon.tech/...?...sslmode=require
-DATABASE_URL_DIRECT=postgresql://...ep-xxxx...neon.tech/...?...sslmode=require
-```
+# Neon Postgres
+# Use pooled URL for app runtime, direct for migrations
+DATABASE_URL=postgresql://...-pooler...neon.tech/...?sslmode=require
+DATABASE_URL_DIRECT=postgresql://...ep-xxxx...neon.tech/...?sslmode=require
 
-### Clerk
-
-```env
+# Clerk
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
 CLERK_SECRET_KEY=sk_...
-```
 
-### Gemini / Google AI SDK
-
-(Depends on your current `src/app/api/ai/asset-description/route.ts` implementation.)
-
-```env
+# Google AI (Gemini)
 GOOGLE_API_KEY=...
 ```
 
 ---
 
-## Install & Run (Bun)
+## Install & Run
 
 ```bash
 bun install
-bun dev
+bun dev          # dev server on http://localhost:3000
 ```
 
 ---
 
-## Migrations (Drizzle)
+## Database
 
-Generate migrations from schema:
+### Schema changes
+
+Edit `src/db/schema.ts`, then push:
 
 ```bash
-bunx drizzle-kit generate
+bun drizzle-kit push
 ```
 
-Apply migrations (use `DATABASE_URL_DIRECT` through `drizzle.config.ts`):
+### Migrations (for production)
 
 ```bash
-bunx drizzle-kit migrate
+bunx drizzle-kit generate   # generate SQL migration files
+bunx drizzle-kit migrate    # apply migrations (uses DATABASE_URL_DIRECT)
+```
+
+### Seed data
+
+```bash
+bun run seed
 ```
 
 ---
 
-## Migrating from Local Postgres (pgAdmin) to Neon (Optional)
+## Testing
 
-If you’re moving existing data, use `pg_dump` / `pg_restore`.
+### Unit & Component Tests (Vitest)
 
-Important:
-
-- Use **DIRECT** Neon host for dumps/restores (avoid `-pooler` for `pg_restore`).
-
-Restore example (Windows PowerShell):
-
-```powershell
-$env:PGPASSWORD="YOUR_NEON_PASSWORD"
-pg_restore --no-owner --no-privileges -v `
-  -h ep-xxxx.eu-central-1.aws.neon.tech `
-  -U neondb_owner -d neondb backup.dump
+```bash
+bun run test          # single run
+bun run test:watch    # watch mode
+bun run test:ui       # Vitest UI (browser)
 ```
 
-If you need to wipe target objects first:
+Tests live alongside source files in `__tests__/` folders and in `src/__tests__/`.
 
-```powershell
-pg_restore --clean --if-exists --no-owner --no-privileges -v `
-  -h ep-xxxx.eu-central-1.aws.neon.tech `
-  -U neondb_owner -d neondb backup.dump
+**What's covered:**
+- `cn()` utility — 10 tests (class merging, Tailwind conflict resolution)
+- `labelize()` + option arrays — 9 tests
+- `buildPieSlices()` — 9 tests (arc math, colors, edge cases)
+- Quantity clamping logic — 9 tests
+- `<Button>` component — 8 tests
+- `<Badge>` component — 8 tests
+- `<ThemeToggle>` component — 7 tests
+- Analytics charts component — 8 tests
+- `<DeleteAssetDialog>` — 9 tests (confirmation flow, case-insensitive)
+
+**Total: 77 tests**
+
+### E2E Tests (Playwright)
+
+```bash
+bun run test:e2e
+```
+
+E2E tests run against a dev server on port 3001 with `E2E_TEST_MODE=true` — this bypasses Clerk auth so protected pages render without a real session.
+
+**What's covered:**
+- Landing page (HTTP 200, hero heading, nav links, feature text, navigation)
+- Sign-in / sign-up pages (HTTP 200, URL match, non-blank body)
+- Home page (no server error, heading, CTA button, Quick access section)
+- Dashboard page (no server error, heading)
+- API routes (401 without auth for `/api/inventories` and `/api/assets`)
+
+### Run everything
+
+```bash
+bun run test:all    # unit + E2E
 ```
 
 ---
 
-## Security Notes
+## CI / GitHub Actions
 
-- Sessions are handled by **Clerk** (cookies/tokens). We don’t store session tokens in our DB.
-- Data security is enforced by:
-  - Clerk middleware protecting pages & APIs
-  - DB-level scoping with `createdByUserId` in every query for assets
+`.github/workflows/tests.yml` runs on every push and pull request.
+
+**`unit` job** (no secrets required):
+- Installs Bun + dependencies
+- Runs `bun run test`
+
+**`e2e` job** (requires repository secrets):
+- Installs Bun + Playwright Chromium
+- Builds the Next.js app
+- Runs `bun run test:e2e`
+- Uploads HTML report artifact (7-day retention)
+
+### Required secrets
+
+Go to **Settings → Secrets and variables → Actions → New repository secret** and add:
+
+| Secret | Description |
+|--------|-------------|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
+| `CLERK_SECRET_KEY` | Clerk secret key |
+| `DATABASE_URL` | Neon pooled connection string |
+
+> **Note:** If you added secrets as *environment* secrets instead of repository secrets, add `environment: <your-env-name>` to the `e2e` job in `.github/workflows/tests.yml`.
 
 ---
 
-## Current Configuration Notes
+## Security
 
-- AG Grid uses **legacy theme mode** to match CSS theme imports:
-  - Keep `ag-grid.css` / quartz theme CSS in `globals.css`
-  - Use `<AgGridReact theme="legacy" />`
+- Sessions handled by Clerk — no session tokens stored in the database
+- Clerk middleware protects all routes by default (deny-by-default)
+- All DB queries are scoped by `userId` — users can only access their own data
+- `E2E_TEST_MODE` bypass is a server-only env var (no `NEXT_PUBLIC_` prefix) — it cannot be set by clients and is injected only by the Playwright test runner
 
 ---
 
-## Next Steps (Suggested)
+## Lint & Format
 
-1. Add **Organizations** (Clerk Orgs) for shared company inventory
-   - Add `orgId` to `assets`
-   - Filter by `orgId` instead of `createdByUserId`
-2. Add **audit logging**
-   - Track who created/updated/deleted assets
-3. Add **rate limiting** for `/api/ai/asset-description`
-4. Add better form UX (toasts, inline validation errors)
-5. Add advanced grid features:
-   - Column state persistence
-   - Export CSV
-   - Bulk actions
+```bash
+bun run lint      # Biome check
+bun run format    # Biome format --write
+```
+
+---
+
+## Further Reading
+
+- [Architecture & File Reference](docs/architecture.md) — purpose and API of every source file

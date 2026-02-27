@@ -7,7 +7,18 @@
       "Bash(powershell.exe -Command \"Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue\")",
       "Bash(cmd.exe /c \"netstat -ano | findstr :3000\")",
       "Bash(bun add -d vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/user-event @testing-library/jest-dom @playwright/test)",
-      "Bash(bun run test)"
+      "Bash(bun run test)",
+      "Bash(cat \"/d/smart-inventory-hub/src/app/\\(app\\)/layout.tsx\")",
+      "Bash(git -C /d/smart-inventory-hub log --oneline --all -- \"*/middleware.ts\" \"*/proxy.ts\")",
+      "Bash(git -C /d/smart-inventory-hub show c317af2:src/proxy.ts)",
+      "Bash(git -C /d/smart-inventory-hub show HEAD:src/proxy.ts)",
+      "Bash(git -C /d/smart-inventory-hub show HEAD:src/app/\\\\\\(app\\\\\\)/layout.tsx)",
+      "Bash(git -C /d/smart-inventory-hub log --all --format=\"%H %s\" -- \"*middleware*\")",
+      "Bash(cat /d/smart-inventory-hub/.next/dev/server/chunks/[root-of-the-server]__5f8382af._.js)",
+      "Bash(grep -r \"E2E_TEST_MODE\\\\|process.env\" /d/smart-inventory-hub/.env*)",
+      "Bash(cat /d/smart-inventory-hub/src/app/api/assets/[id]/route.ts)",
+      "Bash(cat /d/smart-inventory-hub/src/app/api/inventories/[id]/route.ts)",
+      "Bash(ls -la /d/smart-inventory-hub/src/app/\\\\\\(app\\\\\\)/dashboard/)"
     ]
   }
 }
