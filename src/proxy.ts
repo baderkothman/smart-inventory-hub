@@ -8,6 +8,8 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
+  // Allow all routes through in E2E test mode (disabled by default in production)
+  if (process.env.E2E_TEST_MODE === "true") return;
   if (!isPublicRoute(req)) {
     await auth.protect();
   }

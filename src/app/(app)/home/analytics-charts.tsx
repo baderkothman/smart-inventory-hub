@@ -18,7 +18,7 @@ const SLICE_COLORS = [
   "#84CC16",
 ];
 
-function buildPieSlices(data: InventoryStat[]) {
+export function buildPieSlices(data: InventoryStat[]) {
   const total = data.reduce((s, d) => s + d.assetCount, 0);
   if (total === 0) return [];
 

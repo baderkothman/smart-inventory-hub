@@ -8,8 +8,11 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+  // Skip auth enforcement in E2E test mode (disabled by default in production)
+  if (process.env.E2E_TEST_MODE !== "true") {
+    const { userId } = await auth();
+    if (!userId) redirect("/sign-in");
+  }
 
   return <AppShell>{children}</AppShell>;
 }

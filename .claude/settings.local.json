@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(netstat -ano)",
+      "Bash(powershell.exe -Command \"Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | Select-Object -Property LocalAddress,LocalPort,State,OwningProcess\")",
+      "Bash(powershell.exe -Command \"Get-NetTCPConnection -LocalPort 3000 2>$null | ForEach-Object { $p = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue; [PSCustomObject]@{ Port=$_.LocalPort; State=$_.State; PID=$_.OwningProcess; Name=$p.Name } }\")",
+      "Bash(powershell.exe -Command \"Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue\")",
+      "Bash(cmd.exe /c \"netstat -ano | findstr :3000\")",
+      "Bash(bun add -d vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/user-event @testing-library/jest-dom @playwright/test)",
+      "Bash(bun run test)"
+    ]
+  }
+}
