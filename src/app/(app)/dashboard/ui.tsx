@@ -110,7 +110,7 @@ function getInitials(name: string) {
 function GridLoadingOverlay() {
   return (
     <div className="flex h-full items-center justify-center">
-      <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-[var(--shadow-1)]">
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-card">
         <span className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-primary" />
         <span className="text-sm text-muted-foreground">Loading assets…</span>
       </div>
@@ -118,13 +118,7 @@ function GridLoadingOverlay() {
   );
 }
 
-function ImageCell({
-  value,
-  data,
-}: {
-  value: string | null;
-  data?: AssetRow;
-}) {
+function ImageCell({ value, data }: { value: string | null; data?: AssetRow }) {
   const url = (value ?? "").trim();
   const name = data?.name ?? "Asset";
   const [failed, setFailed] = useState(false);
@@ -498,7 +492,6 @@ function BulkMoveDialog({
                 {inventories.map((inv) => (
                   <SelectItem key={inv.id} value={inv.id}>
                     {inv.name}
-                    {inv.isDefault ? " (default)" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -564,8 +557,7 @@ export default function DashboardClient() {
       try {
         const data = await fetchJson<Inventory[]>("/api/inventories");
         setInventoriesData(data);
-        const def = data.find((i) => i.isDefault) ?? data[0];
-        if (def) setSelectedInventoryId(def.id);
+        setSelectedInventoryId(ALL_INV);
       } catch (e) {
         console.error(e);
       } finally {
@@ -633,15 +625,12 @@ export default function DashboardClient() {
     setDeleteOpen(true);
   }, []);
 
-  const onCellClicked = useCallback(
-    (e: CellClickedEvent<AssetRow>) => {
-      // Checkbox column: only toggles selection, no preview
-      if (e.colDef.checkboxSelection) return;
-      if (!e.data) return;
-      setPreviewAsset(e.data);
-    },
-    [],
-  );
+  const onCellClicked = useCallback((e: CellClickedEvent<AssetRow>) => {
+    // Checkbox column: only toggles selection, no preview
+    if (e.colDef.checkboxSelection) return;
+    if (!e.data) return;
+    setPreviewAsset(e.data);
+  }, []);
 
   /* ── Column definitions ─────────────────────────────────────── */
   const defaultColDef = useMemo<ColDef<AssetRow>>(
@@ -744,7 +733,11 @@ export default function DashboardClient() {
     await fetchJson("/api/assets/bulk", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "move", ids: selectedRowIds, inventoryId }),
+      body: JSON.stringify({
+        action: "move",
+        ids: selectedRowIds,
+        inventoryId,
+      }),
     });
     gridRef.current?.api.deselectAll();
     setSelectedRowIds([]);
@@ -777,7 +770,7 @@ export default function DashboardClient() {
             Create your first inventory to start tracking assets.
           </p>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-[var(--shadow-1)]">
+        <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-card">
           <p className="mb-4 text-sm text-muted-foreground">
             No inventories yet.
           </p>
@@ -835,7 +828,7 @@ export default function DashboardClient() {
       </div>
 
       {/* Inventory switcher bar */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 shadow-[var(--shadow-1)]">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 shadow-card">
         <span className="text-xs font-medium text-muted-foreground">
           Inventory
         </span>
@@ -860,7 +853,6 @@ export default function DashboardClient() {
             {inventoriesData.map((inv) => (
               <SelectItem key={inv.id} value={inv.id}>
                 {inv.name}
-                {inv.isDefault ? " (default)" : ""}
               </SelectItem>
             ))}
           </SelectContent>
@@ -907,7 +899,7 @@ export default function DashboardClient() {
       </div>
 
       {/* Grid surface */}
-      <div className="rounded-2xl border border-border bg-card shadow-[var(--shadow-1)]">
+      <div className="rounded-2xl border border-border bg-card shadow-card">
         {/* Grid header */}
         <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
           <div className="min-w-0">
@@ -929,9 +921,7 @@ export default function DashboardClient() {
             aria-label="Refresh"
             title="Refresh"
           >
-            <RefreshCw
-              className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-            />
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
 
@@ -939,7 +929,10 @@ export default function DashboardClient() {
         <div className="flex overflow-hidden">
           {/* Grid */}
           <div className={`p-3 ${previewAsset ? "min-w-0 flex-1" : "w-full"}`}>
-            <div className="ag-theme-quartz" style={{ height: 600, width: "100%" }}>
+            <div
+              className="ag-theme-quartz"
+              style={{ height: 600, width: "100%" }}
+            >
               <AgGridReact<AssetRow>
                 ref={gridRef}
                 theme="legacy"
@@ -1076,10 +1069,7 @@ export default function DashboardClient() {
             >
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={() => void bulkDelete()}
-            >
+            <Button variant="destructive" onClick={() => void bulkDelete()}>
               Delete {selectedRowIds.length} items
             </Button>
           </DialogFooter>
@@ -1123,7 +1113,7 @@ export default function DashboardClient() {
         onDeleted={(id) => {
           const remaining = inventoriesData.filter((i) => i.id !== id);
           setInventoriesData(remaining);
-          setSelectedInventoryId(remaining[0]?.id ?? null);
+          setSelectedInventoryId(ALL_INV);
           setRows([]);
           setPreviewAsset(null);
         }}

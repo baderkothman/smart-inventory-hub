@@ -1,4 +1,14 @@
 /* src/app/globals.css */
+
+/* Exclude directories that contain compiled/binary output — prevents
+   Tailwind from scanning playwright-report or test-results HTML/JSON
+   and generating garbled shadow-[var(--...)] classes that break the
+   lightningcss optimizer.                                              */
+@source not "../../playwright-report";
+@source not "../../test-results";
+@source not "../../.next";
+@source not "../../.next-test";
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -125,6 +135,21 @@
   --shadow-glow: 0 0 48px oklch(0.668 0.228 290 / 0.22);
 
   color-scheme: dark;
+}
+
+/* ── Named shadow utilities ───────────────────────────────────────────── */
+/* Use .shadow-card and .shadow-float instead of shadow-[var(--shadow-N)]
+   arbitrary values — avoids lightningcss choking on those class names.  */
+@layer utilities {
+  .shadow-card {
+    box-shadow: var(--shadow-1);
+  }
+  .shadow-float {
+    box-shadow: var(--shadow-2);
+  }
+  .shadow-glow-ring {
+    box-shadow: var(--shadow-glow);
+  }
 }
 
 /* ── Base styles ──────────────────────────────────────────────────────── */

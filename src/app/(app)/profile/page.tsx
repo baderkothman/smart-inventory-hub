@@ -133,7 +133,7 @@ export default async function ProfilePage() {
         />
 
         {/* Profile card */}
-        <div className="rounded-2xl border border-border bg-card shadow-[var(--shadow-1)]">
+        <div className="rounded-2xl border border-border bg-card shadow-card">
           <div className="flex items-center gap-4 border-b border-border px-5 py-5">
             <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-border bg-background">
               {avatar ? (
@@ -168,7 +168,7 @@ export default async function ProfilePage() {
         </div>
 
         {/* Lightweight note (avoid extra cards/CTAs) */}
-        <div className="rounded-2xl border border-border bg-card px-5 py-4 shadow-[var(--shadow-1)]">
+        <div className="rounded-2xl border border-border bg-card px-5 py-4 shadow-card">
           <p className="text-sm font-semibold tracking-[-0.01em]">
             Account security
           </p>

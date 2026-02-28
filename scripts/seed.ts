@@ -3,19 +3,20 @@
  * scripts/seed.ts — Smart Inventory Hub mock-data seeder (dev only)
  *
  * HOW TO RUN
- *   npm run seed
+ *   bun run seed
  *   # or directly:
- *   SEED_MOCK_DATA=true npx tsx scripts/seed.ts
+ *   bun scripts/seed.ts --dev
  *   # with a custom admin email:
- *   TEST_EMAIL=you@company.com SEED_MOCK_DATA=true npx tsx scripts/seed.ts
+ *   TEST_EMAIL=you@company.com bun run seed
  *
  * WHAT IT DOES
  *   1. Creates (or reuses) 2 test users in Clerk via the Management API.
- *   2. Wipes then recreates all inventories + assets for those users in Postgres.
- *   3. Prints demo credentials to the terminal.
+ *   2. Wipes ALL inventories + assets from the DB (full clean slate).
+ *   3. Inserts fresh inventories + assets with images for each user.
+ *   4. Prints demo credentials to the terminal.
  *
  * IDEMPOTENCY
- *   Re-running is safe.  Existing seed-user data is deleted then re-inserted.
+ *   Re-running is safe. DB is fully wiped each run.
  *   Clerk users are reused (password is reset to the value below on each run).
  *
  * ENVIRONMENT GATE
@@ -58,9 +59,7 @@ if (!DATABASE_URL) {
 // ── DB setup ──────────────────────────────────────────────────────────────
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { eq } from "drizzle-orm";
 
-// Relative imports so this file works outside Next.js without path aliases
 import {
   assets as assetsTable,
   inventories as inventoriesTable,
@@ -110,10 +109,6 @@ async function findClerkUserByEmail(email: string): Promise<ClerkUser | null> {
   return list.length > 0 ? list[0] : null;
 }
 
-/**
- * Returns the Clerk user ID for `email`.
- * Creates the user if not found; resets the password on every run.
- */
 async function upsertClerkUser(opts: {
   email: string;
   password: string;
@@ -123,7 +118,6 @@ async function upsertClerkUser(opts: {
   const existing = await findClerkUserByEmail(opts.email);
 
   if (existing) {
-    // Reset password so the printed credentials are always valid
     await clerkFetch("PATCH", `/users/${existing.id}`, {
       password: opts.password,
       skip_password_checks: true,
@@ -154,9 +148,10 @@ interface SeedAsset {
   serialNumber?: string;
   quantity: number;
   status: AssetStatus;
-  purchaseDate?: string; // YYYY-MM-DD
+  purchaseDate?: string;
   warrantyEndDate?: string;
   description?: string;
+  imageUrl?: string;
 }
 
 interface SeedInventory {
@@ -173,20 +168,72 @@ interface SeedUser {
   inventories: SeedInventory[];
 }
 
-// The first user's email can be overridden via TEST_EMAIL env var
+// Stable Unsplash image URLs — each photo_id is a permanent public resource
+const IMG = {
+  macbook:
+    "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&q=80",
+  thinkpad:
+    "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=400&q=80",
+  dell_xps:
+    "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=400&q=80",
+  lg_monitor:
+    "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&q=80",
+  dell_monitor:
+    "https://images.unsplash.com/photo-1585792180666-f7347c490ee2?w=400&q=80",
+  dock: "https://images.unsplash.com/photo-1625937286074-9ca519d5d9df?w=400&q=80",
+  keyboard:
+    "https://images.unsplash.com/photo-1595225476474-87563907a212?w=400&q=80",
+  adobe:
+    "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=400&q=80",
+  microsoft365:
+    "https://images.unsplash.com/photo-1633419461186-7d40a38105ec?w=400&q=80",
+  figma:
+    "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?w=400&q=80",
+  github:
+    "https://images.unsplash.com/photo-1618401471353-b98afee0b2eb?w=400&q=80",
+  slack:
+    "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&q=80",
+  chair:
+    "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&q=80",
+  desk: "https://images.unsplash.com/photo-1593642634315-48f5414c3ad9?w=400&q=80",
+  mouse:
+    "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=400&q=80",
+  light:
+    "https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?w=400&q=80",
+  macbook_air:
+    "https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=400&q=80",
+  surface:
+    "https://images.unsplash.com/photo-1600267175161-cfaa711b4a81?w=400&q=80",
+  samsung_mon:
+    "https://images.unsplash.com/photo-1547119957-637f8679db1e?w=400&q=80",
+  ipad: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400&q=80",
+  pencil:
+    "https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?w=400&q=80",
+  hub: "https://images.unsplash.com/photo-1625937286074-9ca519d5d9df?w=400&q=80",
+  airpods:
+    "https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=400&q=80",
+  sony_wh:
+    "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&q=80",
+  notion:
+    "https://images.unsplash.com/photo-1633419461186-7d40a38105ec?w=400&q=80",
+  linear:
+    "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&q=80",
+};
+
 const ADMIN_EMAIL = process.env.TEST_EMAIL ?? "admin@inventoryhub.dev";
 const ADMIN_PASSWORD = process.env.TEST_PASSWORD ?? "Admin@Demo2024!";
 
 const SEED_USERS: SeedUser[] = [
+  /* ── Jordan Rivera ─────────────────────────────────────────── */
   {
     email: ADMIN_EMAIL,
     password: ADMIN_PASSWORD,
-    firstName: "Alex",
-    lastName: "Admin",
+    firstName: "Jordan",
+    lastName: "Rivera",
     inventories: [
       {
         name: "IT Equipment",
-        isDefault: true,
+        isDefault: false,
         assets: [
           {
             type: "LAPTOP",
@@ -198,7 +245,9 @@ const SEED_USERS: SeedUser[] = [
             status: "IN_STOCK",
             purchaseDate: "2024-01-15",
             warrantyEndDate: "2027-01-15",
-            description: "16-inch MacBook Pro with M3 Pro chip, 36 GB RAM.",
+            description:
+              "16-inch MacBook Pro with M3 Pro chip, 36 GB unified memory, 512 GB SSD. Primary dev machine.",
+            imageUrl: IMG.macbook,
           },
           {
             type: "LAPTOP",
@@ -211,28 +260,36 @@ const SEED_USERS: SeedUser[] = [
             purchaseDate: "2024-03-01",
             warrantyEndDate: "2027-03-01",
             description:
-              "Ultra-light 14-inch business laptop, Core i7, 32 GB RAM.",
+              "Ultra-light 14-inch business laptop, Intel Core i7-1365U, 32 GB LPDDR5, 1 TB NVMe SSD.",
+            imageUrl: IMG.thinkpad,
           },
           {
             type: "LAPTOP",
             name: "Dell XPS 15 9530",
             brand: "Dell",
             model: "XPS15-9530-i9",
+            serialNumber: "DLXPS9530-004",
             quantity: 3,
             status: "ASSIGNED",
             purchaseDate: "2023-09-10",
             warrantyEndDate: "2026-09-10",
-            description: "15.6-inch OLED 4K, Core i9, 64 GB RAM.",
+            description:
+              "15.6-inch OLED 3.5K touch display, Core i9-13900H, 64 GB DDR5, 2 TB SSD.",
+            imageUrl: IMG.dell_xps,
           },
           {
             type: "MONITOR",
             name: 'LG UltraWide 34"',
             brand: "LG",
             model: "34WN80C-B",
+            serialNumber: "LG-MON-34-0071",
             quantity: 8,
             status: "IN_STOCK",
             purchaseDate: "2023-06-20",
             warrantyEndDate: "2026-06-20",
+            description:
+              "34-inch IPS curved ultrawide, 3440×1440, USB-C 96 W charging, HDR10.",
+            imageUrl: IMG.lg_monitor,
           },
           {
             type: "MONITOR",
@@ -244,24 +301,36 @@ const SEED_USERS: SeedUser[] = [
             status: "IN_STOCK",
             purchaseDate: "2023-11-05",
             warrantyEndDate: "2026-11-05",
+            description:
+              "27-inch IPS 4K UHD, USB-C hub, RJ45, 60 W Power Delivery. TÜV eye-comfort certified.",
+            imageUrl: IMG.dell_monitor,
           },
           {
             type: "OTHER",
-            name: "CalDigit TS4 Thunderbolt Dock",
+            name: "CalDigit TS4 Thunderbolt 4 Dock",
             brand: "CalDigit",
             model: "TS4",
+            serialNumber: "CDG-TS4-00198",
             quantity: 20,
             status: "IN_STOCK",
             purchaseDate: "2024-01-20",
+            warrantyEndDate: "2027-01-20",
+            description:
+              "18-port Thunderbolt 4 dock. 98 W host charging, dual 4K60 displays, 2.5 GbE.",
+            imageUrl: IMG.dock,
           },
           {
             type: "OTHER",
-            name: "Keychron K3 Pro Keyboard",
+            name: "Keychron K8 Pro Keyboard",
             brand: "Keychron",
-            model: "K3-Pro-V2",
-            quantity: 0,
-            status: "RETIRED",
-            description: "Retired — replaced with K8 Pro.",
+            model: "K8-Pro-RGB",
+            quantity: 10,
+            status: "IN_STOCK",
+            purchaseDate: "2024-02-10",
+            warrantyEndDate: "2025-02-10",
+            description:
+              "TKL wireless mechanical keyboard, hot-swap, RGB. Gateron G Pro Red switches.",
+            imageUrl: IMG.keyboard,
           },
         ],
       },
@@ -275,7 +344,11 @@ const SEED_USERS: SeedUser[] = [
             brand: "Adobe",
             quantity: 25,
             status: "IN_STOCK",
-            description: "Annual team plan — 25 seats.",
+            purchaseDate: "2024-01-01",
+            warrantyEndDate: "2025-01-01",
+            description:
+              "Annual team plan — 25 seats. Includes Photoshop, Illustrator, Premiere Pro, After Effects.",
+            imageUrl: IMG.adobe,
           },
           {
             type: "LICENSE",
@@ -283,7 +356,11 @@ const SEED_USERS: SeedUser[] = [
             brand: "Microsoft",
             quantity: 50,
             status: "IN_STOCK",
-            description: "Includes Teams, Exchange, SharePoint, Intune.",
+            purchaseDate: "2024-01-01",
+            warrantyEndDate: "2025-01-01",
+            description:
+              "50-seat plan. Includes Teams, Exchange, SharePoint, OneDrive, Intune, Defender.",
+            imageUrl: IMG.microsoft365,
           },
           {
             type: "LICENSE",
@@ -291,6 +368,11 @@ const SEED_USERS: SeedUser[] = [
             brand: "Figma",
             quantity: 10,
             status: "ASSIGNED",
+            purchaseDate: "2024-04-01",
+            warrantyEndDate: "2025-04-01",
+            description:
+              "10-seat Figma Pro plan. Unlimited projects, version history, team libraries.",
+            imageUrl: IMG.figma,
           },
           {
             type: "LICENSE",
@@ -298,7 +380,11 @@ const SEED_USERS: SeedUser[] = [
             brand: "GitHub",
             quantity: 100,
             status: "IN_STOCK",
-            description: "Org-level. Includes Actions, SAML SSO, audit log.",
+            purchaseDate: "2024-01-01",
+            warrantyEndDate: "2025-01-01",
+            description:
+              "Org-level Enterprise Cloud. SAML SSO, audit log, GitHub Actions, Advanced Security.",
+            imageUrl: IMG.github,
           },
           {
             type: "LICENSE",
@@ -306,6 +392,11 @@ const SEED_USERS: SeedUser[] = [
             brand: "Slack",
             quantity: 50,
             status: "IN_STOCK",
+            purchaseDate: "2024-01-01",
+            warrantyEndDate: "2025-01-01",
+            description:
+              "50-seat Business+ plan. Unlimited message history, huddles, guest access.",
+            imageUrl: IMG.slack,
           },
           {
             type: "LICENSE",
@@ -313,7 +404,8 @@ const SEED_USERS: SeedUser[] = [
             brand: "Zoom",
             quantity: 0,
             status: "RETIRED",
-            description: "Replaced by Microsoft Teams.",
+            description: "Decommissioned — fully replaced by Microsoft Teams.",
+            imageUrl: IMG.slack,
           },
         ],
       },
@@ -329,14 +421,23 @@ const SEED_USERS: SeedUser[] = [
             quantity: 45,
             status: "IN_STOCK",
             purchaseDate: "2022-08-01",
+            warrantyEndDate: "2034-08-01",
+            description:
+              "Ergonomic task chair. PostureFit SL lumbar support, 8Z Pellicle mesh, 12-year warranty.",
+            imageUrl: IMG.chair,
           },
           {
             type: "OTHER",
-            name: "FlexiSpot E7 Standing Desk",
+            name: "FlexiSpot E7 Pro Standing Desk",
             brand: "FlexiSpot",
-            model: "E7-W",
+            model: "E7-Pro-W",
             quantity: 12,
             status: "IN_STOCK",
+            purchaseDate: "2023-03-15",
+            warrantyEndDate: "2028-03-15",
+            description:
+              "Electric height-adjustable desk frame. Dual motor, 355 lb capacity, 3-stage legs.",
+            imageUrl: IMG.desk,
           },
           {
             type: "OTHER",
@@ -345,66 +446,97 @@ const SEED_USERS: SeedUser[] = [
             model: "910-006556",
             quantity: 30,
             status: "IN_STOCK",
+            purchaseDate: "2023-07-01",
+            warrantyEndDate: "2025-07-01",
+            description:
+              "8000 DPI MagSpeed scroll, Bluetooth/USB, 70-day battery. Silent electromagnetic scroll.",
+            imageUrl: IMG.mouse,
           },
           {
             type: "OTHER",
             name: "Elgato Key Light",
             brand: "Elgato",
             model: "10GAK9901",
+            serialNumber: "ELG-KL-0017",
             quantity: 1,
             status: "ASSIGNED",
+            purchaseDate: "2023-10-05",
+            warrantyEndDate: "2025-10-05",
+            description:
+              "Professional studio light. 2500 lumens, 2900–7000 K adjustable, app & Stream Deck control.",
+            imageUrl: IMG.light,
           },
         ],
       },
     ],
   },
 
+  /* ── Sophia Park ───────────────────────────────────────────── */
   {
-    email: "alice@inventoryhub.dev",
-    password: "Alice@Demo2024!",
-    firstName: "Alice",
-    lastName: "Chen",
+    email: "sophia@inventoryhub.dev",
+    password: "Sophia@Demo2024!",
+    firstName: "Sophia",
+    lastName: "Park",
     inventories: [
       {
-        name: "Hardware",
-        isDefault: true,
+        name: "Developer Hardware",
+        isDefault: false,
         assets: [
           {
             type: "LAPTOP",
-            name: "MacBook Air M2 13-inch",
+            name: "MacBook Air M3 13-inch",
             brand: "Apple",
-            model: "MLXY3LL/A",
+            model: "MRXN3LL/A",
+            serialNumber: "C02YM3ABMD6V",
             quantity: 3,
             status: "IN_STOCK",
-            purchaseDate: "2023-07-01",
-            warrantyEndDate: "2026-07-01",
+            purchaseDate: "2024-03-08",
+            warrantyEndDate: "2027-03-08",
+            description:
+              "13-inch MacBook Air, Apple M3 chip, 16 GB unified memory, 512 GB SSD. Fanless design.",
+            imageUrl: IMG.macbook_air,
           },
           {
             type: "LAPTOP",
             name: "Surface Pro 9 i7",
             brand: "Microsoft",
             model: "QIL-00001",
+            serialNumber: "MSF-SP9-0023",
             quantity: 2,
             status: "ASSIGNED",
             purchaseDate: "2023-10-15",
+            warrantyEndDate: "2026-10-15",
+            description:
+              "13-inch 2-in-1 tablet/laptop. Core i7-1255U, 16 GB LPDDR5, 256 GB SSD, 120 Hz display.",
+            imageUrl: IMG.surface,
           },
           {
             type: "MONITOR",
-            name: "Samsung Odyssey G7 32-inch",
+            name: 'Samsung Odyssey G7 32"',
             brand: "Samsung",
             model: "LC32G75TQSNXZA",
+            serialNumber: "SAM-G7-32-0055",
             quantity: 4,
             status: "IN_STOCK",
+            purchaseDate: "2023-05-20",
+            warrantyEndDate: "2026-05-20",
+            description:
+              "32-inch QHDI 1440p curved VA, 240 Hz, 1 ms, G-Sync compatible, HDR600.",
+            imageUrl: IMG.samsung_mon,
           },
           {
             type: "OTHER",
             name: 'iPad Pro 12.9" (6th Gen)',
             brand: "Apple",
             model: "MNXR3LL/A",
+            serialNumber: "DMPGJ3WJPN4X",
             quantity: 6,
             status: "IN_STOCK",
             purchaseDate: "2023-04-05",
             warrantyEndDate: "2026-04-05",
+            description:
+              "12.9-inch iPad Pro. Apple M2 chip, Liquid Retina XDR mini-LED, Thunderbolt 4, 5G.",
+            imageUrl: IMG.ipad,
           },
           {
             type: "OTHER",
@@ -413,11 +545,16 @@ const SEED_USERS: SeedUser[] = [
             model: "MU8F2AM/A",
             quantity: 6,
             status: "IN_STOCK",
+            purchaseDate: "2023-04-05",
+            warrantyEndDate: "2025-04-05",
+            description:
+              "Wireless magnetic charging, double-tap gesture, tilt sensitivity, 4096 pressure levels.",
+            imageUrl: IMG.pencil,
           },
         ],
       },
       {
-        name: "Peripherals",
+        name: "Accessories & Peripherals",
         isDefault: false,
         assets: [
           {
@@ -427,6 +564,11 @@ const SEED_USERS: SeedUser[] = [
             model: "A83490A1",
             quantity: 8,
             status: "IN_STOCK",
+            purchaseDate: "2023-08-12",
+            warrantyEndDate: "2025-08-12",
+            description:
+              "10-in-1 USB-C dock. 100 W PD, 4K HDMI, 2×USB-A 3.2, microSD/SD, 3.5 mm audio.",
+            imageUrl: IMG.hub,
           },
           {
             type: "OTHER",
@@ -437,7 +579,10 @@ const SEED_USERS: SeedUser[] = [
             quantity: 5,
             status: "IN_STOCK",
             purchaseDate: "2023-09-22",
-            warrantyEndDate: "2024-09-22",
+            warrantyEndDate: "2025-09-22",
+            description:
+              "Active noise cancellation, Adaptive Transparency, Personalized Spatial Audio, USB-C case.",
+            imageUrl: IMG.airpods,
           },
           {
             type: "OTHER",
@@ -446,7 +591,9 @@ const SEED_USERS: SeedUser[] = [
             model: "WH1000XM5/B",
             quantity: 0,
             status: "RETIRED",
-            description: "Retired — replaced with AirPods Pro.",
+            description:
+              "Retired — replaced with AirPods Pro 2. 30-hr battery, LDAC, multipoint connection.",
+            imageUrl: IMG.sony_wh,
           },
           {
             type: "LICENSE",
@@ -454,14 +601,23 @@ const SEED_USERS: SeedUser[] = [
             brand: "Notion",
             quantity: 15,
             status: "IN_STOCK",
-            description: "15-seat team workspace.",
+            purchaseDate: "2024-01-01",
+            warrantyEndDate: "2025-01-01",
+            description:
+              "15-seat team workspace. Unlimited blocks, collaborative docs, wikis, databases.",
+            imageUrl: IMG.notion,
           },
           {
             type: "LICENSE",
-            name: "Loom Business",
-            brand: "Loom",
+            name: "Linear Workspace",
+            brand: "Linear",
             quantity: 10,
             status: "IN_STOCK",
+            purchaseDate: "2024-01-01",
+            warrantyEndDate: "2025-01-01",
+            description:
+              "10-seat Linear Business plan. Issue tracking, cycles, roadmaps, GitHub sync.",
+            imageUrl: IMG.linear,
           },
         ],
       },
@@ -472,7 +628,7 @@ const SEED_USERS: SeedUser[] = [
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 function banner(text: string) {
-  const line = "─".repeat(50);
+  const line = "─".repeat(54);
   console.log(`\n${line}\n  ${text}\n${line}`);
 }
 
@@ -495,12 +651,23 @@ async function main() {
   console.log(`  Users: ${SEED_USERS.length}`);
   console.log();
 
+  // ── Full DB wipe (all users) ─────────────────────────────────────────
+  process.stdout.write("  🗑️  Wiping all assets … ");
+  await db.delete(assetsTable);
+  console.log("done");
+
+  process.stdout.write("  🗑️  Wiping all inventories … ");
+  await db.delete(inventoriesTable);
+  console.log("done");
+
   const results: SeedResult[] = [];
 
   for (const seedUser of SEED_USERS) {
-    console.log(`\n👤  ${seedUser.firstName} ${seedUser.lastName} <${seedUser.email}>`);
+    console.log(
+      `\n👤  ${seedUser.firstName} ${seedUser.lastName} <${seedUser.email}>`,
+    );
 
-    // ── 1. Upsert Clerk user ─────────────────────────────────────────────
+    // ── Upsert Clerk user ────────────────────────────────────────────────
     process.stdout.write("   Clerk … ");
     const { clerkId, wasCreated } = await upsertClerkUser({
       email: seedUser.email,
@@ -508,15 +675,13 @@ async function main() {
       firstName: seedUser.firstName,
       lastName: seedUser.lastName,
     });
-    console.log(wasCreated ? `created  (${clerkId})` : `found  (${clerkId}), password reset`);
+    console.log(
+      wasCreated
+        ? `created  (${clerkId})`
+        : `found  (${clerkId}), password reset`,
+    );
 
-    // ── 2. Wipe existing DB data for this user (idempotency) ─────────────
-    process.stdout.write("   DB wipe … ");
-    await db.delete(assetsTable).where(eq(assetsTable.createdByUserId, clerkId));
-    await db.delete(inventoriesTable).where(eq(inventoriesTable.userId, clerkId));
-    console.log("done");
-
-    // ── 3. Insert inventories + assets ───────────────────────────────────
+    // ── Insert inventories + assets ──────────────────────────────────────
     let totalAssets = 0;
 
     for (const inv of seedUser.inventories) {
@@ -546,6 +711,7 @@ async function main() {
             purchaseDate: a.purchaseDate ?? null,
             warrantyEndDate: a.warrantyEndDate ?? null,
             description: a.description ?? null,
+            imageUrl: a.imageUrl ?? null,
           })),
         );
       }
@@ -585,7 +751,7 @@ async function main() {
     "\n  ⚠️  Dev-only credentials — never commit TEST_PASSWORD to production.",
   );
 
-  const line = "─".repeat(50);
+  const line = "─".repeat(54);
   console.log(`\n${line}\n`);
 }
 

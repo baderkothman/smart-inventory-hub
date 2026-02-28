@@ -54,7 +54,7 @@ export function ThemeToggle() {
   };
 
   return (
-    <div className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3.5 shadow-[var(--shadow-1)]">
+    <div className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3.5 shadow-card">
       <div>
         <p className="text-sm font-medium">Appearance</p>
         <p className="mt-0.5 text-xs text-muted-foreground">

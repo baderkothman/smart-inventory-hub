@@ -26,7 +26,7 @@ const DropdownMenuContent = React.forwardRef<
         [
           "z-50 min-w-[12rem] overflow-hidden rounded-xl border border-border",
           "bg-popover text-popover-foreground",
-          "p-1 shadow-[var(--shadow-2)]",
+          "p-1 shadow-float",
           "outline-none",
 
           // animations
@@ -159,7 +159,7 @@ const DropdownMenuSubContent = React.forwardRef<
     sideOffset={sideOffset}
     data-slot="dropdown-menu-sub-content"
     className={cn(
-      "z-50 min-w-[12rem] overflow-hidden rounded-xl border border-border bg-popover p-1 shadow-[var(--shadow-2)] outline-none",
+      "z-50 min-w-[12rem] overflow-hidden rounded-xl border border-border bg-popover p-1 shadow-float outline-none",
       className,
     )}
     {...props}

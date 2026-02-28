@@ -200,7 +200,7 @@ export default function SignUpPage() {
             </div>
 
             {/* Clerk widget */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-[var(--shadow-2)]">
+            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-float">
               <SignUp
                 appearance={{
                   elements: {

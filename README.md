@@ -69,7 +69,7 @@ Full CRUD for assets, scoped to the authenticated user:
 
 ### Dashboard (AG Grid)
 
-- Inventory selector dropdown
+- Inventory selector dropdown (defaults to **All inventories** view)
 - Quick filter text search across all columns
 - Columns: Image, Type, Name, Brand, Model, Serial, Qty, Status, Created, Actions
 - Double-click a row to open the Edit dialog
@@ -83,7 +83,6 @@ Server-rendered stats with client-side interactive charts:
 - **Stat cards**: total inventories, total items, in-stock items
 - **Pie chart**: item distribution per inventory (SVG, 8-color palette)
 - **Inventory table**: name, asset count, is-default badge
-- **Quick access**: links to Dashboard, Profile, Settings
 
 ### Responsive Design + Dark Mode
 
@@ -198,9 +197,20 @@ bunx drizzle-kit migrate    # apply migrations (uses DATABASE_URL_DIRECT)
 
 ### Seed data
 
+Populate the database with realistic mock data (product images, serial numbers, purchase/warranty dates):
+
 ```bash
 bun run seed
 ```
+
+This wipes all existing assets and inventories, then inserts two demo users with pre-populated data. See [SEEDING.md](SEEDING.md) for credentials, customisation options, and troubleshooting.
+
+**Demo users (defaults):**
+
+| User | Email | Password |
+|------|-------|----------|
+| Jordan Rivera | admin@inventoryhub.dev | Admin@Demo2024! |
+| Sophia Park | sophia@inventoryhub.dev | Sophia@Demo2024! |
 
 ---
 
@@ -240,7 +250,7 @@ E2E tests run against a dev server on port 3001 with `E2E_TEST_MODE=true` — th
 **What's covered:**
 - Landing page (HTTP 200, hero heading, nav links, feature text, navigation)
 - Sign-in / sign-up pages (HTTP 200, URL match, non-blank body)
-- Home page (no server error, heading, CTA button, Quick access section)
+- Home page (no server error, heading, CTA button, stat cards)
 - Dashboard page (no server error, heading)
 - API routes (401 without auth for `/api/inventories` and `/api/assets`)
 

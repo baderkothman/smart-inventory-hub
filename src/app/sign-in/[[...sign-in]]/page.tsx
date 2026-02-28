@@ -226,7 +226,7 @@ export default function SignInPage() {
             </div>
 
             {/* Clerk widget */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-[var(--shadow-2)]">
+            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-float">
               <SignIn
                 appearance={{
                   elements: {

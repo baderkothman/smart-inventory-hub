@@ -14,7 +14,7 @@ export default async function SettingsCatchAllPage() {
 
       <ThemeToggle />
 
-      <div className="rounded-2xl border border-border bg-card shadow-[var(--shadow-1)]">
+      <div className="rounded-2xl border border-border bg-card shadow-card">
         <div className="p-3 sm:p-5">
           <UserProfile path="/settings" routing="path" />
         </div>

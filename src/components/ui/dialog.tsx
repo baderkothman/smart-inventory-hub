@@ -72,7 +72,7 @@ function DialogContent({
             "rounded-2xl border border-border",
             "bg-card text-card-foreground",
             "p-6",
-            "shadow-[var(--shadow-2)]",
+            "shadow-float",
             "outline-none",
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",

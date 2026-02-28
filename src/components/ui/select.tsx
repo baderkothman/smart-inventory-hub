@@ -90,7 +90,7 @@ function SelectContent({
           [
             "z-50 overflow-hidden rounded-xl border border-border",
             "bg-popover text-popover-foreground",
-            "shadow-[var(--shadow-2)]",
+            "shadow-float",
 
             // Animations
             "data-[state=open]:animate-in data-[state=closed]:animate-out",

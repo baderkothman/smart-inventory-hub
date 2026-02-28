@@ -92,7 +92,7 @@ function StatCard({
   const p = STAT_PALETTES[palette];
   return (
     <div
-      className="relative overflow-hidden rounded-xl border border-border bg-card shadow-[var(--shadow-1)]"
+      className="relative overflow-hidden rounded-xl border border-border bg-card shadow-card"
       style={{ background: p.bg }}
     >
       <div
@@ -270,7 +270,7 @@ export default async function SignedInHomePage() {
 
       {/* ── Error card (if DB fails) ─────────────────────────────────── */}
       {analyticsError ? (
-        <div className="rounded-xl border border-border bg-card px-6 py-6 shadow-[var(--shadow-1)]">
+        <div className="rounded-xl border border-border bg-card px-6 py-6 shadow-card">
           <p className="text-sm font-medium">Analytics unavailable</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Check your server logs for{" "}
@@ -281,7 +281,7 @@ export default async function SignedInHomePage() {
           </p>
         </div>
       ) : hasData ? (
-        <div className="rounded-xl border border-border bg-card shadow-[var(--shadow-1)]">
+        <div className="rounded-xl border border-border bg-card shadow-card">
           <div className="border-b border-border px-5 py-4">
             <p
               className="text-sm font-semibold tracking-tight"
@@ -346,7 +346,7 @@ export default async function SignedInHomePage() {
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-border bg-card px-6 py-10 text-center shadow-[var(--shadow-1)]">
+        <div className="rounded-xl border border-border bg-card px-6 py-10 text-center shadow-card">
           <p className="text-sm text-muted-foreground">
             No data yet. Create your first inventory on the{" "}
             <Link
